@@ -2,7 +2,7 @@
 
 A private, local-first visual board. Save any image from the web with one click, arrange it on infinite boards, and search it later. Everything stays on your own computer.
 
-**Live demo:** __DEMO_URL__ (shared public playground, wiped every few hours)
+**Live demo:** https://visual-brain-production-9eb4.up.railway.app (shared public playground, wiped every few hours)
 
 ## Run it in two commands
 
