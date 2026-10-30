@@ -1,0 +1,19 @@
+# Board data never goes into the image. A hosted instance starts empty.
+data/
+*.sqlite3
+
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# Mac-only helpers and packaging that the container has no use for.
+*.command
+*.zip
+*.swift
+extension/
+tools/
+tests/
+vendor/
+docs/

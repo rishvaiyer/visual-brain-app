@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Visual Brain Capture",
+  "version": "1.0.0",
+  "description": "Save any image on the web to your local Visual Brain board with one click.",
+  "permissions": [
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "save-current-image": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Save the hovered image to Visual Brain"
+    }
+  },
+  "action": {
+    "default_title": "Visual Brain settings",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["capture-target.js", "content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Visual Brain settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="mark" aria-hidden="true">VB</div>
+      <div>
+        <h1>Visual Brain</h1>
+        <p>Private board connection</p>
+      </div>
+    </header>
+
+    <form id="settings-form">
+      <label for="backend-url">Local backend URL</label>
+      <input id="backend-url" name="backendUrl" type="url" required spellcheck="false" autocomplete="url" placeholder="http://127.0.0.1:8777">
+      <p class="hint">Loopback addresses only. Captures go to <code>/api/capture</code>.</p>
+
+      <label for="pairing-key">Pairing key</label>
+      <input id="pairing-key" name="pairingKey" type="password" required autocomplete="off" spellcheck="false" placeholder="Paste the board pairing key">
+
+      <label class="check-row" for="favorite-default">
+        <input id="favorite-default" name="favorite" type="checkbox">
+        <span>Mark captures as favorites</span>
+      </label>
+
+      <button type="submit">Save settings</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </form>
+    <footer>Settings stay in this browser profile.</footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f3ed">
+  <title>Visual Brain</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css?v=11">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><span class="brandmark">▦</span><a href="/" aria-label="Visual Brain home"><strong>Visual Brain</strong></a><button id="sidebar-close" aria-label="Close sidebar">×</button></div>
+      <div class="sideheading">Boards <span class="heading-actions"><button id="new-folder" title="New folder" aria-label="New folder">▤</button><button id="new-board" title="New board" aria-label="New board">+</button></span></div>
+      <nav id="boards" aria-label="Boards"></nav>
+      <div class="sideheading library-heading">Library <span id="asset-count">0</span></div>
+      <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search saved images" aria-label="Search saved images"></label>
+      <div class="library-filters"><select id="collection-filter" aria-label="Filter images by collection"><option value="">All collections</option></select><button id="favorite-filter" type="button" aria-pressed="false" title="Show favorites only">♡</button></div>
+      <div id="library" class="library"></div>
+      <details class="sidebar-options">
+        <summary>More</summary>
+        <div class="sidebar-bottom"><button id="add-font" type="button">Add a font…</button><button id="open-trash">Trash <span id="trash-count">0</span></button><button id="backup" title="Save everything as a ZIP file">Save all data…</button><button id="pair" title="Extension pairing key" hidden>Extension setup</button></div>
+      </details>
+    </aside>
+    <main class="workspace">
+      <div id="demo-banner" class="demo-banner" hidden><strong>Public playground.</strong> <span id="demo-reset-time">Everything here is wiped every few hours.</span> Anyone can see what you add. <a href="/">Download Visual Brain</a> to keep your own private board.</div>
+      <header class="topbar">
+        <button id="sidebar-toggle" aria-label="Open boards and library">☰</button>
+        <div class="board-title"><div class="board-name" id="board-name">Everything</div><button id="board-options" aria-label="Board options" title="Board options">···</button></div>
+        <div class="tools" role="toolbar" aria-label="Canvas tools">
+          <button class="tool active" data-tool="select" title="Select (V)" aria-label="Select tool" aria-pressed="true">↖ <span>Select</span></button>
+          <button class="tool" data-tool="pan" title="Hand (H)" aria-label="Pan canvas" aria-pressed="false">✋ <span>Hand</span></button>
+          <span class="divider"></span>
+          <button id="upload" title="Add images" aria-label="Add images">＋ <span>Image</span></button>
+          <button class="tool" data-tool="text" title="Add text (T)" aria-label="Add text" aria-pressed="false">T <span>Text</span></button>
+          <button class="tool" data-tool="frame" title="Add frame (F)" aria-label="Add frame" aria-pressed="false">□ <span>Frame</span></button>
+          <button class="tool" data-tool="shape" title="Add shape" aria-label="Add shape" aria-pressed="false">◇ <span>Shape</span></button>
+          <button class="tool" data-tool="draw" title="Draw (D)" aria-label="Draw" aria-pressed="false">✎ <span>Draw</span></button>
+          <span class="divider"></span>
+          <button id="delete-selection" title="Remove selected objects from this board" aria-label="Remove selected objects from this board" disabled>⌫ <span>Delete</span></button>
+          <button id="save-as" title="Save board image or all data to a folder" aria-label="Save as">Save As…</button>
+          <button id="fit" title="Fit content" aria-label="Fit content">Fit</button>
+          <span id="zoom-label" aria-label="Canvas zoom">100%</span>
+        </div>
+        <div class="status-area"><span id="save-status" aria-live="polite">Saved</span></div>
+      </header>
+      <div id="viewport" class="viewport" tabindex="0" aria-label="Infinite canvas">
+        <div id="stage" class="stage"></div>
+        <section id="visual-search" class="visual-search" aria-label="Search all saved images">
+          <div class="visual-search-bar"><span aria-hidden="true">⌕</span><input id="visual-query" type="text" autocomplete="off" placeholder="Search titles, tags, or labels" aria-label="Search all saved images"><button id="visual-clear" type="button" aria-label="Clear image search" hidden>×</button></div>
+          <div id="visual-tags" class="visual-tags" aria-label="Search by tag"></div>
+          <p id="visual-search-status" class="visual-search-status" role="status" aria-live="polite"></p>
+          <button id="visual-local" class="visual-theme" type="button" hidden title="Search saved image pixels locally with CLIP. No image or query is sent to a service.">Find by image content</button>
+        </section>
+        <div id="visual-results" class="visual-results" hidden></div>
+        <div id="marquee" class="marquee" hidden></div>
+        <div id="empty" class="empty"><div class="empty-icon">▧</div><h1>Your board starts here</h1><p>Add images, paste from your clipboard, or drag files into this space.</p><button id="empty-upload">Add images</button></div>
+        <div class="canvas-hint">Scroll to move · ⌘/Ctrl + scroll to zoom · Shift + click to select more</div>
+        <label class="paper-picker">Background <select id="background-choice" aria-label="Board background"><option value="dots">Dot grid</option><option value="graph">Graph paper</option><option value="grid">Grid</option><option value="lined">Lined paper</option><option value="plain">Plain</option></select></label>
+      </div>
+    </main>
+    <aside id="inspector" class="inspector" aria-label="Selection details">
+      <div class="inspector-head"><strong>Details</strong><button id="close-inspector" aria-label="Clear selection">×</button></div>
+      <div id="inspector-body"><p class="muted">Select an image or object on the board.</p></div>
+    </aside>
+  </div>
+  <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple hidden>
+  <input id="font-file-input" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" hidden>
+  <dialog id="add-images-dialog" class="add-images-dialog" aria-labelledby="add-images-title">
+    <div class="add-images-content">
+      <header class="add-images-head"><h2 id="add-images-title">Add images</h2><button id="close-add-images" type="button" aria-label="Close">×</button></header>
+      <div class="add-images-tabs" role="tablist" aria-label="Add images from">
+        <button type="button" role="tab" id="add-tab-upload" aria-controls="add-panel-upload" aria-selected="true" data-add-tab="upload">Upload</button>
+        <button type="button" role="tab" id="add-tab-saved" aria-controls="add-panel-saved" aria-selected="false" data-add-tab="saved">Saved images</button>
+        <button type="button" role="tab" id="add-tab-url" aria-controls="add-panel-url" aria-selected="false" data-add-tab="url">From URL</button>
+      </div>
+      <section id="add-panel-upload" role="tabpanel" aria-labelledby="add-tab-upload" class="add-images-panel">
+        <p>Choose image files to save them to your Library and add them to <strong id="add-images-board-upload">this board</strong>.</p>
+        <button id="choose-image-files" class="add-images-primary" type="button">Choose image files</button>
+        <p class="add-images-note">JPEG, PNG, WebP, GIF, or AVIF · up to 25 MB each</p>
+      </section>
+      <section id="add-panel-saved" role="tabpanel" aria-labelledby="add-tab-saved" class="add-images-panel" hidden>
+        <div class="add-saved-controls">
+          <input id="add-saved-search" type="search" placeholder="Search titles, tags, labels, or source URLs" aria-label="Search saved images">
+          <select id="add-saved-collection" aria-label="Filter saved images by collection"><option value="">All collections</option></select>
+          <button id="add-saved-favorites" type="button" aria-pressed="false" title="Show favorites only">♡</button>
+        </div>
+        <p id="add-saved-count" class="add-images-note" aria-live="polite"></p>
+        <div id="add-saved-grid" class="add-saved-grid"></div>
+      </section>
+      <section id="add-panel-url" role="tabpanel" aria-labelledby="add-tab-url" class="add-images-panel" hidden>
+        <form id="add-image-url-form">
+          <label class="field" for="add-image-url">Direct image URL<input id="add-image-url" name="url" type="url" inputmode="url" placeholder="https://example.com/image.jpg" required maxlength="2048" autocomplete="url"></label>
+          <p class="add-images-note">A copy of the image will be saved to your Library and added to <strong id="add-images-board-url">this board</strong>. Public image links only; up to 25 MB.</p>
+          <p id="add-image-url-status" class="add-images-status" role="status" aria-live="polite"></p>
+          <button id="add-image-url-submit" class="add-images-primary" type="submit">Add to board</button>
+        </form>
+      </section>
+    </div>
+  </dialog>
+  <dialog id="pair-dialog"><form method="dialog"><h2>Connect the extension</h2><p>Load the extension folder in Chrome or Edge, then paste this key into its settings. The key lets the extension save to this computer.</p><label>Local server<input readonly value="http://127.0.0.1:8777"></label><label>Pairing key<input id="pair-key" readonly></label><div class="dialog-actions"><button id="copy-key" type="button">Copy key</button><button>Done</button></div></form></dialog>
+  <dialog id="save-dialog"><div class="save-dialog-content"><h2>Save As</h2><p id="save-dialog-help">Choose what to save. Your browser will download the file.</p><button id="save-board-image" class="save-choice"><strong>Current board as PNG</strong><span>A picture of this board, including text and shapes</span></button><button id="save-all-data" class="save-choice"><strong>Everything as ZIP</strong><span>All boards, saved images, and editable data for backup</span></button><button id="close-save-dialog" class="save-cancel">Cancel</button></div></dialog>
+  <dialog id="board-dialog"><form id="board-form"><h2>Board options</h2><label class="field">Name<input id="board-edit-name" maxlength="80" required></label><label class="field">Folder<select id="board-edit-folder"></select></label><div class="dialog-actions split-actions"><button id="delete-board" type="button" class="danger-action">Delete board</button><span></span><button id="cancel-board" type="button">Cancel</button><button type="submit">Save</button></div></form></dialog>
+  <dialog id="folder-dialog"><form id="folder-form"><h2>Folder</h2><label class="field">Name<input id="folder-edit-name" maxlength="80" required></label><button id="folder-add-board" type="button" class="secondary-action">+ New board in this folder</button><div class="dialog-actions split-actions"><button id="delete-folder" type="button" class="danger-action">Delete folder</button><span></span><button id="cancel-folder" type="button">Cancel</button><button type="submit">Save</button></div></form></dialog>
+  <dialog id="asset-dialog"><form id="asset-form"><h2>Saved image</h2><img id="asset-edit-preview" class="asset-edit-preview" alt=""><label class="field">Title<input id="asset-edit-title" maxlength="500"></label><label class="field">Collection<input id="asset-edit-collection" maxlength="100" list="collection-names"></label><datalist id="collection-names"></datalist><label class="field">Tags, separated by commas<input id="asset-edit-tags"></label><label class="field asset-favorite-field"><input id="asset-edit-favorite" type="checkbox"> Favorite</label><div class="dialog-actions asset-actions"><button id="asset-save-original" type="button">Save original as…</button><button id="asset-find-similar" type="button">Find similar images</button><button id="asset-move-trash" type="button" class="danger-action">Move to Trash</button></div><div class="dialog-actions"><button id="asset-cancel" type="button">Cancel</button><button type="submit">Save changes</button></div></form></dialog>
+  <dialog id="trash-dialog"><div class="trash-dialog-content"><div class="trash-dialog-head"><div><h2>Trash</h2><p>Restore images with their saved board placements.</p></div><button id="close-trash" aria-label="Close Trash">×</button></div><input id="trash-search" type="search" placeholder="Find in Trash" aria-label="Find in Trash"><div id="trash-list" class="trash-list"></div><div class="dialog-actions trash-actions"><button id="restore-all" type="button">Restore all</button><button id="empty-trash" type="button" class="danger-action">Empty Trash…</button></div></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js?v=15" defer></script>
+  <script src="/save-as.js?v=7" defer></script>
+</body>
+</html>
