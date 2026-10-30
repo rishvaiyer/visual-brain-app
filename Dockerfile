@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Application code only. Anything matching .dockerignore, data/ above all, stays out.
 COPY *.py ./
 COPY *.html *.css *.js favicon.svg ./
+COPY brand ./brand
 COPY docker-entrypoint.sh ./
 
 ENV PYTHONUNBUFFERED=1 \

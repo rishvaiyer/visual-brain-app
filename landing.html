@@ -3,67 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f3ed">
+  <meta name="theme-color" content="#f6f1e7">
   <title>Visual Brain</title>
-  <meta name="description" content="A private, local-first visual board. Save any image from the web with one click, arrange it on infinite boards, and keep everything on your own machine.">
+  <meta name="description" content="No-fuss Pinterest, on your own computer. Save any image from the web with one click, arrange it on infinite boards, find it later. Nothing leaves your machine.">
+  <meta property="og:title" content="Visual Brain">
+  <meta property="og:description" content="No-fuss Pinterest, on your own computer.">
+  <meta property="og:image" content="/brand/logo-512.png">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
-    :root { color-scheme: light; --paper: #f5f3ed; --ink: #24251f; --muted: #5f6358; --line: #d9d4c7; --accent: #24251f; }
+    :root { color-scheme: light; --paper: #f6f1e7; --card: #fbf8f1; --ink: #24251f; --muted: #6a6c62; --line: #ddd5c5; --gold: #c9a56a; --terracotta: #d98b5a; --sage: #8fa08a; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-    main { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: clamp(40px, 9vh, 96px) 0 64px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
-    .brand img { width: 28px; height: 28px; border-radius: 6px; }
-    h1 { margin: 40px 0 14px; font-size: clamp(34px, 6vw, 56px); line-height: 1.05; letter-spacing: -.035em; font-weight: 600; max-width: 640px; }
-    .lede { margin: 0 0 34px; max-width: 560px; font-size: 18px; color: var(--muted); }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 22px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: transparent; }
-    .btn.primary { background: var(--accent); color: var(--paper); }
-    .btn:hover { filter: brightness(1.08); }
-    .fine { margin: 0 0 56px; font-size: 13px; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 0 0 56px; }
-    .card { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: #fbfaf6; }
-    .card h2 { margin: 0 0 8px; font-size: 16px; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(#d9d2c3 .8px, transparent .8px); background-size: 22px 22px; }
+    main { width: min(960px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 72px; }
+    nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .wordmark { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: inherit; }
+    .wordmark img { width: 30px; height: 30px; }
+    nav .links { display: flex; gap: 18px; font-size: 14px; }
+    nav .links a { color: var(--muted); text-decoration: none; }
+    nav .links a:hover { color: var(--ink); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 40px; align-items: center; padding: clamp(40px, 9vh, 90px) 0 40px; }
+    .hero h1 { margin: 0 0 14px; font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-weight: 500; font-size: clamp(38px, 6.2vw, 64px); line-height: 1.02; letter-spacing: -.03em; }
+    .hero h1 em { font-style: italic; color: var(--terracotta); }
+    .lede { margin: 0 0 28px; max-width: 480px; font-size: 18px; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 999px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: var(--card); }
+    .btn.primary { background: var(--ink); color: var(--paper); }
+    .btn:hover { transform: translateY(-1px); }
+    .fine { margin: 0; font-size: 13px; color: var(--muted); max-width: 460px; }
+    .frame { position: relative; justify-self: center; width: min(100%, 380px); aspect-ratio: 1; background: var(--ink); border-radius: 18px; padding: 7%; box-shadow: 0 30px 60px -30px rgb(36 37 31 / .55), inset 0 0 0 1px #3a3b33; }
+    .frame::before { content: ""; position: absolute; inset: 3.6%; border: 1.5px solid var(--gold); border-radius: 12px; pointer-events: none; }
+    .frame img { display: block; width: 100%; height: 100%; }
+    .plaque { position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); padding: 5px 14px; border-radius: 6px; background: var(--gold); color: var(--ink); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+    section { margin-top: 64px; }
+    h2 { margin: 0 0 18px; font-family: Georgia, "Iowan Old Style", serif; font-weight: 500; font-size: 30px; letter-spacing: -.02em; }
+    .film { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--card); box-shadow: 0 24px 50px -36px rgb(36 37 31 / .6); }
+    .film video { display: block; width: 100%; height: auto; }
+    .film-caption { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .card { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    .card .dots { display: flex; gap: 5px; margin-bottom: 14px; }
+    .card .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--sage); }
+    .card .dots i:nth-child(2) { background: var(--terracotta); }
+    .card .dots i:nth-child(3) { background: var(--gold); }
+    .card h3 { margin: 0 0 6px; font-size: 16px; }
     .card p { margin: 0; font-size: 14px; color: var(--muted); }
-    h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-    ol { margin: 0 0 56px; padding-left: 22px; }
-    ol li { margin-bottom: 10px; }
-    code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ebe8df; padding: 2px 6px; border-radius: 5px; }
-    pre { margin: 10px 0 0; padding: 14px 16px; background: #ebe8df; border-radius: 10px; overflow-x: auto; }
+    ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
+    ol.steps li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    ol.steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--paper); font-weight: 650; font-size: 14px; }
+    code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ebe4d4; padding: 2px 6px; border-radius: 5px; }
+    pre { margin: 10px 0 0; padding: 12px 14px; background: #ebe4d4; border-radius: 10px; overflow-x: auto; }
     pre code { background: none; padding: 0; }
-    footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+    footer { margin-top: 64px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
     footer a { color: inherit; }
+    @media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 36px; } .frame { order: -1; width: min(100%, 300px); } nav .links a:not(:last-child) { display: none; } }
   </style>
 </head>
 <body>
   <main>
-    <div class="brand"><img src="/favicon.svg" alt=""> Visual Brain</div>
-    <h1>A visual board that lives on your own computer.</h1>
-    <p class="lede">Save any image from the web with one click. Arrange it on infinite boards. Search it by title, tag, or what is in the picture. Nothing leaves your machine.</p>
-    <div class="actions">
-      <a class="btn primary" href="/board">Try the live demo</a>
-      <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a>
-      <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app">Source on GitHub</a>
+    <nav>
+      <a class="wordmark" href="/"><img src="/brand/mark.svg" alt=""> Visual Brain</a>
+      <div class="links"><a href="#film">Watch</a><a href="#run">Run it</a><a href="https://github.com/rishvaiyer/visual-brain-app">GitHub</a></div>
+    </nav>
+
+    <div class="hero">
+      <div>
+        <h1>No-fuss Pinterest,<br>on <em>your own</em> computer.</h1>
+        <p class="lede">See an image you like anywhere on the web. One click, it is on your board. Arrange it, tag it, find it later. Nothing leaves your machine.</p>
+        <div class="actions">
+          <a class="btn primary" href="/board">Try the playground</a>
+          <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a>
+        </div>
+        <p class="fine">The playground is shared and wipes itself every few hours. Your own install is private and free, forever.</p>
+      </div>
+      <div class="frame"><img src="/brand/logo.svg" alt="A pointillist brain in a gallery frame" width="380" height="380"><span class="plaque">Visual Brain · est. 2026</span></div>
     </div>
-    <p class="fine">The demo is a shared public playground. Anything you add is visible to everyone and is wiped every few hours. Your own install is private.</p>
 
-    <div class="grid">
-      <div class="card"><h2>Clip from anywhere</h2><p>Right-click or hover any image in Chrome or Edge and it lands on your board at full resolution.</p></div>
-      <div class="card"><h2>Infinite canvas</h2><p>Boards and folders. Text, frames, shapes, drawings. Pan, zoom, drag, resize.</p></div>
-      <div class="card"><h2>Search that works</h2><p>Titles, tags, and collections. On Apple Silicon, search by what the picture shows.</p></div>
-      <div class="card"><h2>Yours</h2><p>One SQLite file and a folder of originals. Export everything as a ZIP any time.</p></div>
-    </div>
+    <section id="film">
+      <h2>Thirty seconds, no sound.</h2>
+      <div class="film"><video controls muted playsinline preload="metadata" poster="/brand/demo-poster.jpg"><source src="/brand/demo.mp4" type="video/mp4">Your browser cannot play this video. <a href="/brand/demo.mp4">Download it</a> instead.</video></div>
+      <p class="film-caption">Browse a page, hover an image, click Save. Open the board. That is the whole product.</p>
+    </section>
 
-    <h3>Run it yourself</h3>
-    <ol>
-      <li>Download the latest release and unzip it, or <code>git clone</code> the repository.</li>
-      <li>In that folder run:<pre><code>python3 -m pip install -r requirements.txt
-python3 server.py</code></pre></li>
-      <li>Open <code>http://127.0.0.1:8777</code>. Mac users can double-click <code>Open Visual Brain.command</code> instead.</li>
-      <li>Load the <code>extension</code> folder in <code>chrome://extensions</code> (Developer mode, Load unpacked) and paste the pairing key from the board's <strong>Extension setup</strong>.</li>
-    </ol>
+    <section>
+      <h2>What it does</h2>
+      <div class="grid">
+        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Clip from anywhere</h3><p>Hover any image in Chrome or Edge and a small Save button appears. It lands on your board at the best resolution the page has.</p></div>
+        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Infinite boards</h3><p>Boards inside folders. Text, frames, shapes and sketches next to your images. Pan, zoom, drag, crop.</p></div>
+        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Finds things</h3><p>Search titles, tags and collections. On a Mac it also reads what is in the picture, so untagged images still turn up.</p></div>
+        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Yours, entirely</h3><p>One folder: a SQLite file and your originals. No account. No cloud. Export everything as a ZIP any time.</p></div>
+      </div>
+    </section>
 
-    <footer>MIT licensed. Python 3.10 or newer, no database server, no accounts. <a href="https://github.com/rishvaiyer/visual-brain-app">GitHub</a></footer>
+    <section id="run">
+      <h2>Run it in two minutes</h2>
+      <ol class="steps">
+        <li><div><strong>Download</strong> the latest release and unzip it, or <code>git clone</code> the repository.</div></li>
+        <li><div><strong>Start it.</strong> Mac: double-click <code>Open Visual Brain.command</code>. Anywhere else:<pre><code>python3 -m pip install -r requirements.txt
+python3 server.py</code></pre></div></li>
+        <li><div><strong>Add the extension.</strong> Open <code>chrome://extensions</code>, turn on Developer mode, Load unpacked, choose the <code>extension</code> folder. Paste the pairing key from the board's <strong>Extension setup</strong>.</div></li>
+      </ol>
+    </section>
+
+    <footer>
+      <span>MIT licensed · Python 3.10+ · no database server, no accounts</span>
+      <span><a href="https://github.com/rishvaiyer/visual-brain-app">Source</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Releases</a></span>
+    </footer>
   </main>
 </body>
 </html>

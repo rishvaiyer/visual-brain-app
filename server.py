@@ -625,7 +625,7 @@ class Handler(BaseHTTPRequestHandler):
         if not hosting.hosted() or hosting.DEMO:
             return False
         public = {"/", "/favicon.svg", "/login", "/healthz"}
-        return path not in public
+        return path not in public and not path.startswith("/brand/")
 
     def owner_read_ok(self):
         if hosting.hosted():
@@ -789,6 +789,14 @@ class Handler(BaseHTTPRequestHandler):
                            "into the data/ folder of a fresh install, then start it again. "
                            "This ZIP contains your private images. Do not upload it publicly.\n")
             return self.send_bytes(out.getvalue(), "application/zip", extra={"Content-Disposition": "attachment; filename=visual-brain-backup.zip"})
+        if path.startswith("/brand/"):
+            # Logo, demo film and poster. Only plain files directly inside brand/.
+            name = path[len("/brand/"):]
+            file = (ROOT / "brand" / name).resolve()
+            if "/" in name or not name or file.parent != (ROOT / "brand").resolve() or not file.is_file():
+                return self.error("Not found", 404)
+            mime = mimetypes.guess_type(str(file))[0] or "application/octet-stream"
+            return self.send_bytes(file.read_bytes(), mime, extra={"Cache-Control": "public, max-age=86400"})
         if path in ("/", "/board", "/index.html", "/app.js", "/save-as.js", "/style.css", "/favicon.svg"):
             if path == "/":
                 file = ROOT / ("landing.html" if hosting.hosted() else "index.html")
