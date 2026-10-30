@@ -532,7 +532,7 @@ async function init() {
       signIn.textContent="Read-only · Sign in to edit";
       signIn.style.cssText="font:600 12px system-ui;color:inherit;text-decoration:underline;margin-right:12px";
       $("#save-status").before(signIn);
-    } else if (!state.key) {
+    } else if (!state.key && !data.capabilities?.demo) {
       const signOut=document.createElement("form");
       signOut.method="POST";
       signOut.action="/api/logout";
