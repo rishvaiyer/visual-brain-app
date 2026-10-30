@@ -2,7 +2,7 @@
 <h1 align="center">Visual Brain</h1>
 <p align="center"><strong>No-fuss Pinterest, on your own computer.</strong><br>Save any image from the web with one click. Arrange it on infinite boards. Find it later. Nothing leaves your machine.</p>
 
-<p align="center"><a href="https://visual-brain-production-9eb4.up.railway.app/brand/demo.mp4">▶ 30-second silent demo</a> · <a href="https://visual-brain-production-9eb4.up.railway.app">Live playground</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a></p>
+<p align="center"><a href="https://visual-brain-production-9eb4.up.railway.app/brand/demo.mp4">▶ 35-second silent demo</a> · <a href="https://visual-brain-production-9eb4.up.railway.app">Live playground</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a></p>
 
 **Live demo:** https://visual-brain-production-9eb4.up.railway.app (shared public playground, wiped every few hours)
 
