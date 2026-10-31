@@ -25,6 +25,7 @@ Needs Python 3.10 or newer. No database server, no accounts, no cloud.
 - **Browser extension.** Right-click any image in Chrome or Edge, or hover and click the floating button, and it lands on your board at the best resolution the page offers.
 - **Fonts.** Add your own TTF, OTF, WOFF, or WOFF2 fonts and type with them on the board. Five open fonts are bundled in `fonts/`.
 - **Export.** Save a board as a PNG, or everything as a ZIP backup you can restore from.
+- **Sample boards.** An empty library offers six ready-made boards to try the app on, and the public playground opens on them. Double-click any picture to see it large. See `demo-seed/NOTICE.md` for where the pictures come from.
 - **Image content search (optional, Apple Silicon).** Double-click `Install Local Visual Search.command` once to download a local CLIP model. Then search by what is in the picture, fully offline.
 
 ## Browser extension
@@ -59,6 +60,7 @@ It refuses to listen on a public address unless you choose one of two modes:
 python3 tests/test_visual_brain.py          # end-to-end smoke test against a real server
 python3 -m unittest tests/test_hosted_security.py
 python3 -m unittest tests/test_enrichment.py tests/test_inspo_fonts.py
+python3 tests/test_demo_seed.py             # sample boards: seeding, routes, a copy without pictures
 node tests/test_extension_menu.js && node tests/test_extension_targets.js && node tests/test_extension_fallback.js
 ```
 

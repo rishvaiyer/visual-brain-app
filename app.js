@@ -37,10 +37,14 @@ function loadFonts() {
 function screenToWorld(clientX, clientY) { const box = viewport.getBoundingClientRect(), v = view(); return {x: (clientX - box.left - v.x) / v.zoom, y: (clientY - box.top - v.y) / v.zoom}; }
 function showSaved(text = "Saved") { $("#save-status").textContent = text; }
 function persistItem(i) { if (!state.canEdit) return; clearTimeout(state.saveTimers.get(i.id)); showSaved("Saving…"); const timer = setTimeout(async () => { try { await request(`/api/items/${i.id}`, "PUT", {state: i.state}); showSaved(); } catch (e) { showSaved("Save failed"); toast(e.message); } }, 350); state.saveTimers.set(i.id, timer); }
-function persistView() { if (!state.canEdit) return; clearTimeout(state.viewTimer); const boardId=state.boardId, boardView={...view()}; state.viewTimer = setTimeout(async () => { try { await request(`/api/boards/${boardId}`, "PUT", {view: boardView}); } catch (e) { toast(e.message); } }, 450); }
+function persistView() { if (!state.canEdit || state.capabilities?.demo) return; clearTimeout(state.viewTimer); const boardId=state.boardId, boardView={...view()}; state.viewTimer = setTimeout(async () => { try { await request(`/api/boards/${boardId}`, "PUT", {view: boardView}); } catch (e) { toast(e.message); } }, 450); }
 
 function renderBoards() {
-  const link = b => `<button class="board-link ${b.id === state.boardId ? "active" : ""}" data-board="${esc(b.id)}" title="${esc(b.name)}">${esc(b.name)}</button>`;
+  const link = b => {
+    const pins = state.items.filter(i => i.board_id === b.id && i.kind === "image").sort((x, y) => (x.state.z || 0) - (y.state.z || 0));
+    const tiles = pins.slice(0, 4).map(i => `<i style="background-image:url(/api/assets/${esc(i.asset_id)})"></i>`).join("");
+    return `<button class="board-link ${b.id === state.boardId ? "active" : ""}" data-board="${esc(b.id)}" title="${esc(b.name)}"><span class="cover cover-${Math.min(4, pins.length)}" aria-hidden="true">${tiles}</span><span class="board-text"><b>${esc(b.name)}</b><small>${pins.length} ${pins.length === 1 ? "pin" : "pins"}</small></span></button>`;
+  };
   const loose = state.boards.filter(b => !b.folder_id);
   $("#boards").innerHTML = loose.map(link).join("") + state.folders.map(f => `<div class="folder-group"><div class="folder-row"><button class="folder-toggle" data-toggle-folder="${esc(f.id)}" aria-expanded="${!state.closedFolders.has(f.id)}" title="${state.closedFolders.has(f.id) ? "Expand" : "Collapse"} folder">${state.closedFolders.has(f.id) ? "▸" : "▾"} <span>▤ ${esc(f.name)}</span></button><button class="folder-more" data-edit-folder="${esc(f.id)}" aria-label="Options for ${esc(f.name)}">···</button></div>${state.closedFolders.has(f.id) ? "" : `<div class="folder-boards">${state.boards.filter(b => b.folder_id === f.id).map(link).join("")}</div>`}</div>`).join("");
   $("#board-name").textContent = currentBoard().name;
@@ -56,7 +60,7 @@ function renderLibrary() {
   filter.value = collections.includes(selected) ? selected : "";
   const matches = state.assets.filter(a => (!filter.value || a.collection === filter.value) && (!state.favoritesOnly || a.favorite) && [visualWords(a),a.source_url,a.image_url].filter(Boolean).join(" ").toLowerCase().includes(q));
   $("#asset-count").textContent = state.assets.length;
-  $("#library").innerHTML = matches.length ? matches.slice(0,state.libraryLimit).map(a => `<div class="library-card" data-asset="${esc(a.id)}" draggable="true"><button class="library-tile" title="Add ${esc(assetDisplayLabel(a))} to board"><img src="/api/assets/${esc(a.id)}" alt="${esc(assetDisplayLabel(a))}" draggable="false" loading="lazy">${a.favorite ? '<span class="heart">♥</span>' : ''}</button><button class="library-options" title="Image options" aria-label="Options for ${esc(assetDisplayLabel(a))}">···</button></div>`).join("") + (matches.length > state.libraryLimit ? `<button id="library-more" class="library-more">Show more (${matches.length-state.libraryLimit} left)</button>` : "") : `<p class="library-empty">${q || filter.value || state.favoritesOnly ? "No images match these filters." : "Saved images appear here. Add an image to begin."}</p>`;
+  $("#library").innerHTML = matches.length ? '<div class="library-columns">' + matches.slice(0,state.libraryLimit).map(a => `<div class="library-card" data-asset="${esc(a.id)}" draggable="true"><button class="library-tile" title="Add ${esc(assetDisplayLabel(a))} to board"><img src="/api/assets/${esc(a.id)}" alt="${esc(assetDisplayLabel(a))}" draggable="false" loading="lazy">${a.favorite ? '<span class="heart">♥</span>' : ''}</button><button class="library-options" title="Image options" aria-label="Options for ${esc(assetDisplayLabel(a))}">···</button></div>`).join("") + '</div>' + (matches.length > state.libraryLimit ? `<button id="library-more" class="library-more">Show more (${matches.length-state.libraryLimit} left)</button>` : "") : `<p class="library-empty">${q || filter.value || state.favoritesOnly ? "No images match these filters." : "Saved images appear here. Add an image to begin."}</p>`;
   $("#library").querySelectorAll(".library-card").forEach(card => { card.querySelector(".library-tile").addEventListener("click", () => addLibraryAsset(card.dataset.asset)); card.querySelector(".library-options").addEventListener("click",()=>openAssetDialog(card.dataset.asset)); card.addEventListener("dragstart", e=>dragOriginalImage(e,card.dataset.asset)); });
   $("#library-more")?.addEventListener("click",()=>{state.libraryLimit+=80;renderLibrary();});
 }
@@ -85,7 +89,8 @@ function renderVisualSearch() {
   $("#visual-clear").hidden = !query;
   if (!onEverything) return;
   const counts = new Map();
-  for (const a of state.assets) for (const tag of [...(a.tags || []), ...(a.auto_tags || [])]) counts.set(tag, (counts.get(tag) || 0) + 1);
+  for (const a of state.assets) for (const tag of a.tags || []) counts.set(tag, (counts.get(tag) || 0) + 1);
+  if (counts.size < 6) for (const a of state.assets) for (const tag of a.auto_tags || []) counts.set(tag, (counts.get(tag) || 0) + 1);  // chips lead with your own tags
   const tags = [...counts].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0])).slice(0, 8);
   $("#visual-tags").innerHTML = tags.map(([tag]) => `<button type="button" data-tag="${esc(tag)}" aria-label="Search tag ${esc(tag)}">${esc(tag)}</button>`).join("");
   $("#visual-tags").querySelectorAll("[data-tag]").forEach(button => button.onclick = () => { $("#visual-query").value = button.dataset.tag; updateVisualQuery(); });
@@ -160,7 +165,7 @@ function fitCroppedImage(el) {
 function itemMarkup(i) {
   const s = i.state, selected = state.selected.has(i.id);
   const shape = i.kind === "image" ? imageMarkup(i) : i.kind === "text" ? esc(s.text || "Text") : i.kind === "frame" ? esc(s.text || "Frame") : i.kind === "shape" ? shapeMarkup(s) : `<svg viewBox="0 0 ${Math.max(1,s.w)} ${Math.max(1,s.h)}" preserveAspectRatio="none"><polyline points="${(s.points||[]).map(p=>`${p[0]},${p[1]}`).join(" ")}" fill="none" stroke="${esc(s.color || "#333b30")}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  return `<div class="item ${i.kind} ${selected ? "selected" : ""} ${s.locked ? "locked" : ""}" data-item="${i.id}" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;transform:rotate(${s.rotation || 0}deg);z-index:${s.z || 1}">${shape}${selected && !s.locked ? '<div class="resize-handle" data-handle="resize"></div>' : ''}</div>`;
+  return `<div class="item ${i.kind} ${selected ? "selected" : ""} ${s.locked ? "locked" : ""}" data-item="${i.id}"${i.kind === "image" ? ` data-title="${esc(asset(i.asset_id)?.title || "")}"` : ""} style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;transform:rotate(${s.rotation || 0}deg);z-index:${s.z || 1}">${shape}${selected && !s.locked ? '<div class="resize-handle" data-handle="resize"></div>' : ''}</div>`;
 }
 function renderCanvas() {
   const v = view(); stage.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.zoom})`;
@@ -175,6 +180,8 @@ function renderCanvas() {
   stage.querySelectorAll(".item.text").forEach(el => { const s = item(el.dataset.item).state; Object.assign(el.style, {fontFamily: s.fontFamily || "Avenir Next, sans-serif", fontSize: `${Math.max(8, Math.min(200, Number(s.fontSize) || 22))}px`, fontWeight: s.fontWeight || "400", textAlign: s.textAlign || "left", color: safeColor(s.color, "#30382f")}); });
   stage.querySelectorAll(".item.image").forEach(el => { const img=el.querySelector("img"); if(img.complete) fitCroppedImage(el); else img.onload=()=>fitCroppedImage(el); });
   $("#empty").hidden = currentItems().length > 0;
+  $("#empty-sample").hidden = !(state.capabilities?.sample_board && state.canEdit && !state.assets.length);
+  if (v.autofit && viewport.clientWidth > 0) { const mode = v.autofit; delete v.autofit; return fitContent({ width: mode === "width" }); }  // sample boards open composed, on any screen size
   $("#zoom-label").textContent = `${Math.round(v.zoom * 100)}%`;
   viewport.classList.toggle("pan-mode", state.tool === "pan" || state.space);
   renderVisualSearch();
@@ -201,7 +208,7 @@ function renderInspector() {
     return;
   }
   let html = a ? `<img class="detail-image" src="/api/assets/${a.id}" alt="${esc(a.alt || "Selected image")}" draggable="true" title="Drag into a Finder folder to copy the original"><div class="image-save-row"><button id="save-original" type="button">Save original as…</button><span>or drag the image into Finder</span></div>` : "";
-  if (a) html += `${a.pixel_width ? `<p class="muted">Original: ${a.pixel_width} × ${a.pixel_height} px</p>` : ""}${field("Title", "asset-title", a.title || "", {placeholder:assetDisplayLabel(a)})}${field("Collection", "asset-collection", a.collection || "")}${field("Tags (comma separated)", "asset-tags", (a.tags || []).join(", "))}${a.auto_tags?.length ? `<p class="muted">Image labels: ${esc(a.auto_tags.join(" · "))}</p>` : ""}<label class="field"><input id="asset-favorite" type="checkbox" ${a.favorite ? "checked" : ""}> Favorite</label>${a.source_url ? `<a class="source-link" href="${esc(a.source_url)}" target="_blank" rel="noopener noreferrer">Open source page ↗</a>` : ""}<div class="detail-section"><h3>Find related images</h3><div class="action-row"><button data-action="find-similar" type="button">Find similar images</button></div></div>`;
+  if (a) html += `${a.credit ? `<p class="credit">${esc(a.credit)}</p>` : ""}${a.pixel_width ? `<p class="muted">Original: ${a.pixel_width} × ${a.pixel_height} px</p>` : ""}${field("Title", "asset-title", a.title || "", {placeholder:assetDisplayLabel(a)})}${field("Collection", "asset-collection", a.collection || "")}${field("Tags (comma separated)", "asset-tags", (a.tags || []).join(", "))}${a.auto_tags?.length ? `<p class="muted">Image labels: ${esc(a.auto_tags.join(" · "))}</p>` : ""}<label class="field"><input id="asset-favorite" type="checkbox" ${a.favorite ? "checked" : ""}> Favorite</label>${a.source_url ? `<a class="source-link" href="${esc(a.source_url)}" target="_blank" rel="noopener noreferrer">Open source page ↗</a>` : ""}<div class="detail-section"><h3>Find related images</h3><div class="action-row"><button data-action="find-similar" type="button">Find similar images</button></div></div>`;
   if (i.kind === "text" || i.kind === "frame") html += `<label class="field">Text<textarea id="item-text">${esc(s.text || "")}</textarea></label>`;
   if (i.kind === "text") {
     const fonts=["Avenir Next, sans-serif","Helvetica Neue, sans-serif","Georgia, serif","Baskerville, serif","Menlo, monospace"];
@@ -211,8 +218,8 @@ function renderInspector() {
     html += `<div class="detail-section"><h3>Typography</h3>${selectField("Font", "text-font-preset", known ? s.fontFamily : s.fontFamily ? "custom" : fonts[0], choices)}${field("Font installed on this device","text-font-custom",s.fontFamily && !known ? s.fontFamily : "")}<div class="field-row">${field("Size", "text-font-size", s.fontSize || 22,{type:"number",min:8,max:200})}${field("Color", "text-color", safeColor(s.color,"#30382f"),{type:"color"})}</div><div class="field-row">${selectField("Weight","text-weight",s.fontWeight || "400",[["400","Regular"],["600","Semibold"],["700","Bold"]])}${selectField("Align","text-align",s.textAlign || "left",[["left","Left"],["center","Center"],["right","Right"]])}</div></div>`;
   }
   if (i.kind === "shape") html += `<div class="detail-section"><h3>Shape</h3>${selectField("Type","shape-type",s.shape || "rectangle",[["rectangle","Rectangle"],["ellipse","Ellipse"],["triangle","Triangle"],["line","Line"],["arrow","Arrow"]])}<div class="field-row">${field("Fill","shape-fill",safeColor(s.fill,"#c8d4bb"),{type:"color"})}${field("Outline","shape-stroke",safeColor(s.stroke,"#4d684f"),{type:"color"})}</div>${field("Outline width","shape-stroke-width",s.strokeWidth || 2,{type:"number",min:1,max:30})}</div>`;
-  html += `<div class="detail-section"><h3>Position & size</h3><div class="field-row">${field("X", "item-x", Math.round(s.x), {type:"number"})}${field("Y", "item-y", Math.round(s.y), {type:"number"})}${field("Width", "item-w", Math.round(s.w), {type:"number",min:40})}${field("Height", "item-h", Math.round(s.h), {type:"number",min:40})}</div>${field("Rotation", "item-rotation", s.rotation || 0, {type:"number",min:-360,max:360})}</div>`;
-  if (a) { const c = s.crop || {x:0,y:0,w:1,h:1}; html += `<div class="detail-section"><h3>Crop (original is preserved)</h3>${["x","y","w","h"].map(k=>field(({x:"Left",y:"Top",w:"Width",h:"Height"})[k], `crop-${k}`, c[k], {type:"range",min:0,max:1,step:.01})).join("")}<div class="action-row"><button data-action="reset-crop">Reset crop</button></div></div>`; }
+  html += `<details class="detail-section adv"><summary>Position and size</summary><div class="field-row">${field("X", "item-x", Math.round(s.x), {type:"number"})}${field("Y", "item-y", Math.round(s.y), {type:"number"})}${field("Width", "item-w", Math.round(s.w), {type:"number",min:40})}${field("Height", "item-h", Math.round(s.h), {type:"number",min:40})}</div>${field("Rotation", "item-rotation", s.rotation || 0, {type:"number",min:-360,max:360})}</details>`;
+  if (a) { const c = s.crop || {x:0,y:0,w:1,h:1}; html += `<details class="detail-section adv"><summary>Crop (original is preserved)</summary>${["x","y","w","h"].map(k=>field(({x:"Left",y:"Top",w:"Width",h:"Height"})[k], `crop-${k}`, c[k], {type:"range",min:0,max:1,step:.01})).join("")}<div class="action-row"><button data-action="reset-crop">Reset crop</button></div></details>`; }
   html += inspectorActions(i); body.innerHTML = html;
   for (const k of ["x","y","w","h","rotation"]) { const el = $(`#item-${k}`); el.addEventListener("change", () => { s[k] = k === "w" || k === "h" ? Math.max(40, Number(el.value)) : Number(el.value); persistItem(i); renderCanvas(); }); }
   if (a) {
@@ -322,11 +329,20 @@ function renderAddSavedImages() {
   grid.innerHTML = matches.length ? matches.slice(0,80).map(a=>`<button type="button" class="add-saved-image" data-add-asset="${esc(a.id)}" title="Add ${esc(assetDisplayLabel(a))} to this board"><img src="/api/assets/${encodeURIComponent(a.id)}" alt="${esc(assetDisplayLabel(a))}" loading="lazy"><span><strong>${esc(assetDisplayLabel(a))}</strong><small>${esc(a.collection || (a.favorite ? "Favorite" : "Saved image"))}</small><em>Add to board</em></span></button>`).join("") : '<p class="add-saved-empty">No saved images match these filters.</p>';
   grid.querySelectorAll("[data-add-asset]").forEach(button=>button.addEventListener("click",async()=>{button.disabled=true;if(await addLibraryAsset(button.dataset.addAsset))$("#add-images-dialog").close();else button.disabled=false;}));
 }
-function fitContent() {
+function fitContent(opts) {
   const all = currentItems(); if (!all.length) { Object.assign(view(),{x:0,y:0,zoom:1}); renderCanvas(); persistView(); return; }
   const minX=Math.min(...all.map(i=>i.state.x)),minY=Math.min(...all.map(i=>i.state.y)),maxX=Math.max(...all.map(i=>i.state.x+i.state.w)),maxY=Math.max(...all.map(i=>i.state.y+i.state.h));
-  const zoom=Math.min(2,Math.max(.1,Math.min((viewport.clientWidth-100)/(maxX-minX),(viewport.clientHeight-100)/(maxY-minY))));
-  Object.assign(view(),{zoom,x:(viewport.clientWidth-(minX+maxX)*zoom)/2,y:(viewport.clientHeight-(minY+maxY)*zoom)/2}); renderCanvas(); persistView();
+  // Keep clear of the search bar that floats over the Everything board.
+  renderVisualSearch();  // so the chips are in place and the search panel has its real height
+  const panel=$("#visual-search"), top=panel && !panel.hidden ? panel.offsetHeight + 28 : 0, pad=50;
+  const fitW=(viewport.clientWidth-2*pad)/(maxX-minX), fitH=(viewport.clientHeight-2*pad-top)/(maxY-minY);
+  if (opts?.width === true) {
+    // Big board: open at a size where the pictures read, anchored on the title, and let the rest run off the edges.
+    const zoom=Math.max(.4,Math.min(.75,fitW*1.35));
+    Object.assign(view(),{zoom,x:Math.max(24,(viewport.clientWidth-(maxX-minX)*zoom)/2)-minX*zoom,y:top+24-minY*zoom}); renderCanvas(); persistView(); return;
+  }
+  const zoom=Math.min(2,Math.max(.1,Math.min(fitW,fitH)));
+  Object.assign(view(),{zoom,x:(viewport.clientWidth-(minX+maxX)*zoom)/2,y:top+(viewport.clientHeight-top-(minY+maxY)*zoom)/2}); renderCanvas(); persistView();
 }
 function zoomAt(factor,cx,cy) { const v=view(), pos=screenToWorld(cx,cy), box=viewport.getBoundingClientRect(); v.zoom=Math.max(.08,Math.min(8,v.zoom*factor)); v.x=cx-box.left-pos.x*v.zoom; v.y=cy-box.top-pos.y*v.zoom; renderCanvas(); persistView(); }
 
@@ -381,6 +397,7 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("keyup",e=>{if(e.code==="Space"){state.space=false;viewport.classList.toggle("pan-mode",state.tool==="pan");}});
 document.querySelectorAll(".tool").forEach(b=>b.addEventListener("click",()=>setTool(b.dataset.tool)));
 $("#upload").onclick=$("#empty-upload").onclick=()=>openAddImages("upload");
+$("#empty-sample").onclick=async()=>{try{await request("/api/load-sample","POST",{});await refreshData();toast("Sample boards loaded");}catch(e){toast(e.message);}};
 $("#close-add-images").onclick=()=>$("#add-images-dialog").close();
 document.querySelectorAll("[data-add-tab]").forEach(button=>button.addEventListener("click",()=>setAddImagesTab(button.dataset.addTab)));
 $("#choose-image-files").onclick=()=>$("#file-input").click();
@@ -553,7 +570,9 @@ async function init() {
         const fontsChanged=(data.fonts||[]).some((font,i)=>font.id!==state.fonts[i]?.id)||(data.fonts||[]).length!==state.fonts.length;
         if(data.items.length!==state.items.length||data.assets.length!==state.assets.length||analysisChanged||fontsChanged||(data.trash||[]).length!==state.trash.length||data.boards.length!==state.boards.length||(data.folders||[]).length!==state.folders.length){
           const newImage=data.assets.length>state.assets.length;
+          const localViews=new Map(state.boards.map(b=>[b.id,b.view]));
           Object.assign(state,{items:data.items,assets:data.assets,fonts:data.fonts||[],trash:data.trash||[],boards:data.boards,folders:data.folders||[]});
+          if(state.capabilities.demo) for(const b of state.boards) if(localViews.has(b.id)) b.view=localViews.get(b.id);  // in the playground each visitor keeps their own pan and zoom
           if(!state.boards.some(b=>b.id===state.boardId)){state.boardId="main";state.selected.clear();}
           loadFonts();renderAll();if(newImage)toast("New image saved to Library");
         }

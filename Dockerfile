@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY *.py ./
 COPY *.html *.css *.js favicon.svg ./
 COPY brand ./brand
+COPY demo-seed ./demo-seed
 COPY docker-entrypoint.sh ./
 
 ENV PYTHONUNBUFFERED=1 \

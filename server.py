@@ -20,7 +20,7 @@ import threading
 import time
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
@@ -104,6 +104,8 @@ def setup() -> str:
             db.execute("ALTER TABLE assets ADD COLUMN auto_text TEXT NOT NULL DEFAULT ''")
         if "auto_analyzed_at" not in existing_columns:
             db.execute("ALTER TABLE assets ADD COLUMN auto_analyzed_at TEXT")
+        if "credit" not in existing_columns:
+            db.execute("ALTER TABLE assets ADD COLUMN credit TEXT NOT NULL DEFAULT ''")
         board_columns = {r[1] for r in db.execute("PRAGMA table_info(boards)")}
         if "folder_id" not in board_columns:
             db.execute("ALTER TABLE boards ADD COLUMN folder_id TEXT")
@@ -230,10 +232,89 @@ def analyze_existing_assets():
 
 
 DEMO_RESET_AT = ""
+SEED = ROOT / "demo-seed"
+
+
+def sample_available() -> bool:
+    """True when the bundled sample boards, pictures included, are present in this copy."""
+    manifest = SEED / "manifest.json"
+    if not manifest.is_file():
+        return False
+    try:
+        entries = json.loads(manifest.read_text(encoding="utf-8"))["assets"]
+    except (OSError, ValueError, KeyError):
+        return False
+    return bool(entries) and all((SEED / entry["file"]).is_file() for entry in entries)
+
+
+def seed_sample() -> dict:
+    """Fill an empty library with the bundled sample boards, so a first visit opens on a real board.
+
+    The pictures are open-licence works listed, with their credits, in demo-seed/manifest.json.
+    """
+    if not sample_available():
+        raise ValueError("No sample boards are bundled with this copy.")
+    manifest = json.loads((SEED / "manifest.json").read_text(encoding="utf-8"))
+    base = datetime.now(timezone.utc)
+
+    def stamp(offset: int = 0) -> str:
+        return (base + timedelta(seconds=offset)).isoformat(timespec="seconds")
+
+    asset_ids: dict[str, str] = {}
+    analyze: list[tuple[str, str]] = []
+    with LOCK, connection() as db:
+        if db.execute("SELECT COUNT(*) FROM assets").fetchone()[0]:
+            raise ValueError("Sample boards only load into an empty library.")
+        for folder in manifest.get("folders", []):
+            db.execute("INSERT OR IGNORE INTO folders(id,name,created_at) VALUES(?,?,?)", (folder["id"], folder["name"], stamp()))
+        for n, board in enumerate(manifest["boards"]):
+            db.execute("""INSERT INTO boards(id,name,view,created_at,updated_at,folder_id) VALUES(?,?,?,?,?,?)
+                          ON CONFLICT(id) DO UPDATE SET name=excluded.name, view=excluded.view,
+                          folder_id=excluded.folder_id, updated_at=excluded.updated_at""",
+                       (board["id"], board["name"], json.dumps(board.get("view") or {"x": 0, "y": 0, "zoom": 1}),
+                        stamp(n), stamp(), board.get("folder")))
+        total = len(manifest["assets"])
+        for n, entry in enumerate(manifest["assets"]):
+            raw = (SEED / entry["file"]).read_bytes()
+            mime = detect_mime(raw)
+            if mime not in IMAGE_MIMES:
+                raise ValueError(f"Sample image {entry['file']} is not a supported picture.")
+            digest = hashlib.sha256(raw).hexdigest()
+            asset_id = "img_" + digest[:12]
+            created = stamp(total - n)  # first entry is the newest, so the Library opens on it
+            rel = f"{created[:4]}/{created[5:7]}/{asset_id}.{IMAGE_MIMES[mime]}"
+            path = ASSETS / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            with Image.open(BytesIO(raw)) as decoded:
+                width, height = decoded.size
+            db.execute("""INSERT INTO assets(id,sha256,mime,filename,source_url,image_url,alt,title,tags,collection,favorite,
+                          created_at,pixel_width,pixel_height,credit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       (asset_id, digest, mime, rel, entry.get("source_url", ""), "", entry.get("alt", ""),
+                        entry.get("title", ""), json.dumps(entry.get("tags", [])), entry.get("collection", ""),
+                        int(bool(entry.get("favorite"))), created, width, height, entry.get("credit", "")))
+            asset_ids[entry["key"]] = asset_id
+            analyze.append((asset_id, rel))
+        for n, entry in enumerate(manifest["items"]):
+            state = dict(entry["state"])
+            asset_id = None
+            if entry["kind"] == "image":
+                asset_id = asset_ids[entry["asset"]]
+                state.setdefault("crop", {"x": 0, "y": 0, "w": 1, "h": 1})
+            state.setdefault("rotation", 0)
+            state.setdefault("locked", False)
+            item_id = "item_" + hashlib.sha1(f"{entry['board']}:{n}".encode()).hexdigest()[:12]
+            db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)",
+                       (item_id, entry["board"], entry["kind"], asset_id, json.dumps(state), stamp()))
+        db.commit()
+    if sys.platform == "darwin" and not hosting.hosted():
+        # Apple Vision adds labels and visible text, one picture at a time, in the background.
+        threading.Thread(target=lambda: [analyze_asset(a, f) for a, f in analyze], daemon=True).start()
+    return {"assets": len(asset_ids), "boards": len(manifest["boards"]), "items": len(manifest["items"])}
 
 
 def reset_demo_data():
-    """Wipe every board, image and font so the public playground starts fresh."""
+    """Wipe every board, image and font, then lay the sample boards back out so the public playground starts fresh."""
     global DEMO_RESET_AT
     with LOCK, connection() as db:
         for table in ("items", "asset_enrichment", "assets", "fonts", "boards", "folders"):
@@ -246,7 +327,9 @@ def reset_demo_data():
                 if file.is_file():
                     file.unlink(missing_ok=True)
         (DATA / "clip-index.sqlite3").unlink(missing_ok=True)
-    DEMO_RESET_AT = datetime.fromtimestamp(time.time() + DEMO_RESET_HOURS * 3600, timezone.utc).isoformat(timespec="seconds")
+    if sample_available():
+        seed_sample()
+    DEMO_RESET_AT =datetime.fromtimestamp(time.time() + DEMO_RESET_HOURS * 3600, timezone.utc).isoformat(timespec="seconds")
 
 
 def demo_reset_loop():
@@ -279,6 +362,7 @@ def capabilities():
         "similar_images": True,
         "backup_export": True,
         "extension_capture": not hosting.hosted(),
+        "sample_board": sample_available(),
     }
 
 
@@ -624,8 +708,8 @@ class Handler(BaseHTTPRequestHandler):
     def private_read_required(self, path):
         if not hosting.hosted() or hosting.DEMO:
             return False
-        public = {"/", "/favicon.svg", "/login", "/healthz"}
-        return path not in public and not path.startswith("/brand/")
+        public = {"/", "/landing", "/landing.js", "/favicon.svg", "/login", "/healthz"}
+        return path not in public and not path.startswith(("/brand/", "/demo-seed/images/"))
 
     def owner_read_ok(self):
         if hosting.hosted():
@@ -797,7 +881,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.error("Not found", 404)
             mime = mimetypes.guess_type(str(file))[0] or "application/octet-stream"
             return self.send_bytes(file.read_bytes(), mime, extra={"Cache-Control": "public, max-age=86400"})
-        if path in ("/", "/board", "/index.html", "/app.js", "/save-as.js", "/style.css", "/favicon.svg"):
+        if path.startswith("/demo-seed/images/"):
+            # The sample pictures the landing page shows. Only plain files directly inside demo-seed/images/.
+            name = path[len("/demo-seed/images/"):]
+            file = (SEED / "images" / name).resolve()
+            if "/" in name or not name or file.parent != (SEED / "images").resolve() or not file.is_file():
+                return self.error("Not found", 404)
+            mime = mimetypes.guess_type(str(file))[0] or "application/octet-stream"
+            return self.send_bytes(file.read_bytes(), mime, extra={"Cache-Control": "public, max-age=86400"})
+        if path == "/landing":
+            return self.send_bytes((ROOT / "landing.html").read_bytes(), "text/html; charset=utf-8")
+        if path in ("/", "/board", "/index.html", "/app.js", "/save-as.js", "/style.css", "/glow.css", "/glow.js", "/landing.js", "/favicon.svg"):
             if path == "/":
                 file = ROOT / ("landing.html" if hosting.hosted() else "index.html")
             else:
@@ -820,6 +914,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(add_image(data), 201)
             if path == "/api/capture-url":
                 return self.json(add_image_from_url(data), 201)
+            if path == "/api/load-sample":
+                return self.json(seed_sample(), 201)
             if path == "/api/fonts":
                 return self.json(add_font(data), 201)
             if path.startswith("/api/enrichment/") and path.endswith("/retry"):
@@ -1007,6 +1103,7 @@ if __name__ == "__main__":
     enrichment.start()
     threading.Thread(target=analyze_existing_assets, daemon=True).start()
     if hosting.DEMO:
+        reset_demo_data()  # every deploy opens on the sample boards, not on whatever the last visitors left
         threading.Thread(target=demo_reset_loop, daemon=True).start()
         print(f"Visual Brain (public demo, resets every {DEMO_RESET_HOURS:g} h): listening on {HOST}:{PORT}", flush=True)
     elif hosting.hosted():

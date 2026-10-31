@@ -11,105 +11,178 @@
   <meta property="og:image" content="/brand/logo-512.png">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
-    :root { color-scheme: light; --paper: #f6f1e7; --card: #fbf8f1; --ink: #24251f; --muted: #6a6c62; --line: #ddd5c5; --gold: #c9a56a; --terracotta: #d98b5a; --sage: #8fa08a; }
+    :root { color-scheme: light; --paper: #f6f1e7; --paper-2: #efe8d9; --card: #fbf8f1; --ink: #24251f; --muted: #6a6c62; --faint: #8a8574; --line: #e1d9c8; --terra: #d98b5a; --terra-d: #b9693a; --sage: #8fa08a; --gold: #c9a56a;
+      --serif: Georgia, "Iowan Old Style", "Times New Roman", serif; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
-      background-image: radial-gradient(#d9d2c3 .8px, transparent .8px); background-size: 22px 22px; }
-    main { width: min(960px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 72px; }
-    nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .wordmark { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: inherit; }
-    .wordmark img { width: 30px; height: 30px; }
-    nav .links { display: flex; gap: 18px; font-size: 14px; }
+    body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(#dbd2bf .9px, transparent .9px); background-size: 24px 24px; }
+    a { color: inherit; }
+    main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 22px 0 80px; }
+    .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 6px 0; }
+    .wordmark { display: flex; align-items: center; gap: 11px; font: 500 21px/1 var(--serif); letter-spacing: -.02em; text-decoration: none; }
+    .wordmark img { width: 34px; height: 34px; border-radius: 10px; }
+    nav .links { display: flex; align-items: center; gap: 22px; font-size: 14px; }
     nav .links a { color: var(--muted); text-decoration: none; }
     nav .links a:hover { color: var(--ink); }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 40px; align-items: center; padding: clamp(40px, 9vh, 90px) 0 40px; }
-    .hero h1 { margin: 0 0 14px; font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; font-weight: 500; font-size: clamp(38px, 6.2vw, 64px); line-height: 1.02; letter-spacing: -.03em; }
-    .hero h1 em { font-style: italic; color: var(--terracotta); }
-    .lede { margin: 0 0 28px; max-width: 480px; font-size: 18px; color: var(--muted); }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 999px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: var(--card); }
+    nav .links a.pill { color: var(--paper); background: var(--ink); padding: 9px 16px; border-radius: 999px; font-weight: 600; }
+    nav .links a.pill:hover { background: var(--terra-d); }
+
+    .hero { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 56px; align-items: center; padding: clamp(36px, 7vh, 72px) 0 36px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 12.5px; color: var(--muted); }
+    .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: #6cc07f; box-shadow: 0 0 0 4px rgba(108,192,127,.2); }
+    .hero h1 { margin: 20px 0 18px; font: 500 clamp(42px, 6vw, 74px)/1 var(--serif); letter-spacing: -.035em; }
+    .hero h1 em { font-style: italic; color: var(--terra); }
+    .lede { margin: 0 0 30px; max-width: 480px; font-size: 18.5px; color: var(--muted); line-height: 1.6; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 24px; border-radius: 999px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: var(--card); transition: transform .15s, background .15s, color .15s; }
+    .btn:hover { transform: translateY(-2px); }
     .btn.primary { background: var(--ink); color: var(--paper); }
-    .btn:hover { transform: translateY(-1px); }
-    .fine { margin: 0; font-size: 13px; color: var(--muted); max-width: 460px; }
-    .frame { position: relative; justify-self: center; width: min(100%, 380px); aspect-ratio: 1; background: var(--ink); border-radius: 18px; padding: 7%; box-shadow: 0 30px 60px -30px rgb(36 37 31 / .55), inset 0 0 0 1px #3a3b33; }
-    .frame::before { content: ""; position: absolute; inset: 3.6%; border: 1.5px solid var(--gold); border-radius: 12px; pointer-events: none; }
-    .frame img { display: block; width: 100%; height: 100%; }
-    .plaque { position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%); padding: 5px 14px; border-radius: 6px; background: var(--gold); color: var(--ink); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
-    section { margin-top: 64px; }
-    h2 { margin: 0 0 18px; font-family: Georgia, "Iowan Old Style", serif; font-weight: 500; font-size: 30px; letter-spacing: -.02em; }
-    .film { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--card); box-shadow: 0 24px 50px -36px rgb(36 37 31 / .6); }
-    .film video { display: block; width: 100%; height: auto; }
-    .film-caption { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-    .card { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
-    .card .dots { display: flex; gap: 5px; margin-bottom: 14px; }
-    .card .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--sage); }
-    .card .dots i:nth-child(2) { background: var(--terracotta); }
-    .card .dots i:nth-child(3) { background: var(--gold); }
-    .card h3 { margin: 0 0 6px; font-size: 16px; }
-    .card p { margin: 0; font-size: 14px; color: var(--muted); }
-    ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
-    ol.steps li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
-    ol.steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--paper); font-weight: 650; font-size: 14px; }
-    code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ebe4d4; padding: 2px 6px; border-radius: 5px; }
-    pre { margin: 10px 0 0; padding: 12px 14px; background: #ebe4d4; border-radius: 10px; overflow-x: auto; }
+    .btn.primary:hover { background: var(--terra-d); border-color: var(--terra-d); }
+    .fine { margin: 0; font-size: 13px; color: var(--faint); max-width: 440px; }
+
+    /* The collage: a real board, drawn with real pictures */
+    .board { position: relative; aspect-ratio: 1 / .92; border-radius: 34px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 50px 90px -50px rgba(36,37,31,.55); overflow: hidden;
+      background-image: radial-gradient(#e2d9c6 .9px, transparent .9px); background-size: 22px 22px; }
+    .board::before { content: ""; position: absolute; inset: 16% 6% 4% 14%; border-radius: 50%; background: #eadfc9; opacity: .75; filter: blur(2px); }
+    .board::after { content: ""; position: absolute; inset: 2% 4% 50% 52%; border-radius: 50%; background: #dde3ec; opacity: .8; }
+    .pin { position: absolute; margin: 0; width: var(--w); left: var(--x); top: var(--y); transform: rotate(var(--r)); z-index: 2; background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(36,37,31,.14), 0 20px 30px -16px rgba(36,37,31,.6); transition: transform .5s cubic-bezier(.2,.8,.2,1), box-shadow .3s; }
+    .pin img { display: block; width: 100%; height: auto; border-radius: 4px; }
+    .pin:hover { transform: rotate(0deg) translateY(-5px) scale(1.03); box-shadow: 0 2px 4px rgba(36,37,31,.16), 0 32px 44px -18px rgba(36,37,31,.65); z-index: 5; }
+    .tag { position: absolute; z-index: 4; font: 500 clamp(18px, 2.6vw, 30px)/1 var(--serif); letter-spacing: -.02em; transform: rotate(-2deg); }
+    .tag small { display: block; margin-top: 3px; font: 400 clamp(11px, 1.3vw, 14px)/1.2 var(--serif); color: var(--muted); }
+    .searchbar { position: absolute; z-index: 6; left: 50%; top: 4.5%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 18px 10px 14px; border-radius: 999px; background: #fffdf8; border: 1px solid var(--line); box-shadow: 0 18px 34px -18px rgba(36,37,31,.55); font-size: 14.5px; white-space: nowrap; }
+    .searchbar .ic { width: 18px; height: 18px; color: var(--faint); }
+    .searchbar b { font-weight: 500; }
+    .searchbar span { display: inline-block; width: 1.5px; height: 17px; background: var(--terra); margin-left: -6px; animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .toolbar { position: absolute; z-index: 6; left: 50%; bottom: 3.5%; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 16px 30px -18px rgba(36,37,31,.6); }
+    .toolbar i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #4f4b3e; }
+    .toolbar i:first-child { background: var(--ink); color: var(--paper); }
+    .toolbar .ic { width: 17px; height: 17px; }
+
+    section { margin-top: clamp(64px, 10vw, 112px); }
+    .kicker { font-size: 12px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--terra-d); }
+    h2 { margin: 10px 0 14px; font: 500 clamp(30px, 4vw, 46px)/1.08 var(--serif); letter-spacing: -.03em; max-width: 720px; }
+    .sub { margin: 0 0 28px; max-width: 600px; font-size: 17px; color: var(--muted); }
+    .window { border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--card); box-shadow: 0 50px 100px -56px rgba(36,37,31,.65); }
+    .window-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper-2); font-size: 12.5px; color: var(--faint); }
+    .window-bar i { width: 11px; height: 11px; border-radius: 50%; background: #ddd2bc; }
+    .window-bar a { margin-left: auto; color: var(--ink); font-weight: 600; text-decoration: none; }
+    .window-bar a:hover { color: var(--terra-d); }
+    .window iframe { display: block; width: 100%; height: min(720px, 78vh); border: 0; background: var(--paper); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card { padding: 26px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); transition: transform .25s, box-shadow .25s; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 30px 50px -34px rgba(36,37,31,.55); }
+    .card .badge { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 18px; border-radius: 14px; background: var(--paper-2); color: var(--terra-d); }
+    .card h3 { margin: 0 0 8px; font: 500 22px/1.15 var(--serif); letter-spacing: -.02em; }
+    .card p { margin: 0; font-size: 15px; color: var(--muted); }
+    ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: step; max-width: 800px; }
+    ol.steps li { display: grid; grid-template-columns: 40px 1fr; gap: 18px; align-items: start; padding: 20px 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); }
+    ol.steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 500 18px/1 var(--serif); }
+    code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ebe4d4; padding: 2px 7px; border-radius: 6px; }
+    pre { margin: 12px 0 0; padding: 14px 16px; background: #ebe4d4; border-radius: 12px; overflow-x: auto; }
     pre code { background: none; padding: 0; }
-    footer { margin-top: 64px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
-    footer a { color: inherit; }
-    @media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 36px; } .frame { order: -1; width: min(100%, 300px); } nav .links a:not(:last-child) { display: none; } }
+    .cta { margin-top: clamp(64px, 10vw, 112px); padding: clamp(34px, 6vw, 64px); border-radius: 34px; background: var(--ink); color: var(--paper); text-align: center; }
+    .cta h2 { margin-left: auto; margin-right: auto; color: var(--paper); }
+    .cta p { margin: 0 auto 26px; max-width: 480px; color: #cfc8b6; }
+    .cta .btn { border-color: var(--paper); }
+    .cta .btn.primary { background: var(--paper); color: var(--ink); }
+    .cta .btn.primary:hover { background: var(--terra); color: #1b1b17; border-color: var(--terra); }
+    footer { margin-top: 56px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--faint); border-top: 1px solid var(--line); padding-top: 20px; }
+
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 40px; } .board { order: 2; } nav .links a:not(.pill) { display: none; } }
+    @media (max-width: 520px) { .searchbar { font-size: 12.5px; padding: 8px 14px 8px 11px; } .toolbar i { width: 28px; height: 28px; } .window iframe { height: 70vh; } }
+    @media (prefers-reduced-motion: reduce) { .pin, .card, .btn { transition: none; } .searchbar span { animation: none; } html { scroll-behavior: auto; } }
   </style>
 </head>
 <body>
   <main>
     <nav>
       <a class="wordmark" href="/"><img src="/brand/mark.svg" alt=""> Visual Brain</a>
-      <div class="links"><a href="#film">Watch</a><a href="#run">Run it</a><a href="https://github.com/rishvaiyer/visual-brain-app">GitHub</a></div>
+      <div class="links"><a href="#try">Try it</a><a href="#what">What it does</a><a href="#run">Run it</a><a href="https://github.com/rishvaiyer/visual-brain-app">GitHub</a><a class="pill" href="/board">Open the playground</a></div>
     </nav>
 
     <div class="hero">
       <div>
-        <h1>No-fuss Pinterest,<br>on <em>your own</em> computer.</h1>
-        <p class="lede">See an image you like anywhere on the web. One click, it is on your board. Arrange it, tag it, find it later. Nothing leaves your machine.</p>
+        <span class="eyebrow"><i></i> Free, private, open source</span>
+        <h1>No-fuss Pinterest, on <em>your own</em> computer.</h1>
+        <p class="lede">See a picture you love anywhere on the web. One click and it is on your board. Arrange it, tag it, find it later. Nothing leaves your machine.</p>
         <div class="actions">
-          <a class="btn primary" href="/board">Try the playground</a>
+          <a class="btn primary" href="/board">Open the playground</a>
           <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a>
         </div>
-        <p class="fine">The playground is shared and wipes itself every few hours. Your own install is private and free, forever.</p>
+        <p class="fine">The playground is shared and wipes itself every few hours. Your own copy is private, and free forever.</p>
       </div>
-      <div class="frame"><img src="/brand/logo.svg" alt="A pointillist brain in a gallery frame" width="380" height="380"><span class="plaque">Visual Brain · est. 2026</span></div>
+
+      <div class="board" aria-label="A moodboard made in Visual Brain">
+        <div class="searchbar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><b>pink</b><span></span></div>
+        <div class="tag" style="left:6%;top:15%">rooms<small>with good light</small></div>
+        <figure class="pin" style="--w:29%;--x:5%;--y:25%;--r:-3deg"><img src="/demo-seed/images/e0014.jpg" alt="Red arches by the sea"></figure>
+        <figure class="pin" style="--w:27%;--x:35%;--y:12%;--r:2.2deg"><img src="/demo-seed/images/e0188.jpg" alt="Lighthouse river in pixels"></figure>
+        <figure class="pin" style="--w:24%;--x:68%;--y:14%;--r:-2.4deg"><img src="/demo-seed/images/e0136.jpg" alt="Leopard in the current"></figure>
+        <figure class="pin" style="--w:21%;--x:3%;--y:60%;--r:3deg"><img src="/demo-seed/images/e0117.jpg" alt="Satin bow"></figure>
+        <figure class="pin" style="--w:26%;--x:27%;--y:49%;--r:-1.6deg"><img src="/demo-seed/images/e0177.jpg" alt="Sunday daybed"></figure>
+        <figure class="pin" style="--w:23%;--x:55%;--y:47%;--r:2.4deg"><img src="/demo-seed/images/e0004.jpg" alt="Lily at night"></figure>
+        <figure class="pin" style="--w:19%;--x:78%;--y:55%;--r:-3deg"><img src="/demo-seed/images/e0182.jpg" alt="Strawberry candy"></figure>
+        <div class="toolbar" aria-hidden="true">
+          <i><svg class="ic" viewBox="0 0 24 24"><path d="M4.04 4.69a.5.5 0 0 1 .65-.65l16 6.5a.5.5 0 0 1-.06.95l-6.13 1.58a2 2 0 0 0-1.43 1.44l-1.58 6.12a.5.5 0 0 1-.95.07z"/></svg></i>
+          <i><svg class="ic" viewBox="0 0 24 24"><path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/><circle cx="9" cy="9" r="2"/></svg></i>
+          <i><svg class="ic" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></i>
+          <i><svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></svg></i>
+        </div>
+      </div>
     </div>
 
-    <section id="film">
-      <h2>Thirty-five seconds, no sound.</h2>
-      <div class="film"><video controls muted playsinline preload="metadata" poster="/brand/demo-poster.jpg"><source src="/brand/demo.mp4" type="video/mp4">Your browser cannot play this video. <a href="/brand/demo.mp4">Download it</a> instead.</video></div>
-      <p class="film-caption">Browse a page, hover an image, click Save. Open the board. That is the whole product.</p>
+    <section id="try" hidden>
+      <div class="kicker">Try it</div>
+      <h2>This is the real thing, not a screenshot.</h2>
+      <p class="sub">Drag a picture. Scroll to move, hold <code>Ctrl</code> or <code>⌘</code> and scroll to zoom. Search for a colour or a mood. Double-click any picture to see it large.</p>
+      <div class="window">
+        <div class="window-bar"><i></i><i></i><i></i><span>The playground</span><a href="/board">Open full screen</a></div>
+        <iframe id="playground" title="Visual Brain playground" loading="lazy"></iframe>
+      </div>
     </section>
 
-    <section>
-      <h2>What it does</h2>
+    <section id="what">
+      <div class="kicker">What it does</div>
+      <h2>Everything you pin, none of the feed.</h2>
       <div class="grid">
-        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Clip from anywhere</h3><p>Hover any image in Chrome or Edge and a small Save button appears. It lands on your board at the best resolution the page has.</p></div>
-        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Infinite boards</h3><p>Boards inside folders. Text, frames, shapes and sketches next to your images. Pan, zoom, drag, crop.</p></div>
-        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Finds things</h3><p>Search titles, tags and collections. On a Mac it also reads what is in the picture, so untagged images still turn up.</p></div>
-        <div class="card"><div class="dots"><i></i><i></i><i></i></div><h3>Yours, entirely</h3><p>One folder: a SQLite file and your originals. No account. No cloud. Export everything as a ZIP any time.</p></div>
+        <div class="card"><div class="badge"><svg class="ic" viewBox="0 0 24 24"><path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/><circle cx="9" cy="9" r="2"/></svg></div><h3>Clip from anywhere</h3><p>Hover any image in Chrome or Edge and a small Save button appears. It lands on your board at the best size the page has.</p></div>
+        <div class="card"><div class="badge"><svg class="ic" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></svg></div><h3>Boards with no grid to fight</h3><p>Drop pictures anywhere. Tilt them, crop them, add notes, frames and sketches. Folders keep the boards tidy.</p></div>
+        <div class="card"><div class="badge"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div><h3>Finds things for you</h3><p>Search titles, tags and collections. On a Mac it also reads what is in each picture, so untagged ones still turn up.</p></div>
+        <div class="card"><div class="badge"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h3>Yours, entirely</h3><p>One folder: a database file and your originals. No account, no cloud. Export everything as a ZIP any time.</p></div>
       </div>
     </section>
 
     <section id="run">
-      <h2>Run it in two minutes</h2>
+      <div class="kicker">Run it</div>
+      <h2>Two minutes, start to finish.</h2>
       <ol class="steps">
         <li><div><strong>Download</strong> the latest release and unzip it, or <code>git clone</code> the repository.</div></li>
-        <li><div><strong>Start it.</strong> Mac: double-click <code>Open Visual Brain.command</code>. Anywhere else:<pre><code>python3 -m pip install -r requirements.txt
+        <li><div><strong>Start it.</strong> On a Mac, double-click <code>Open Visual Brain.command</code>. Anywhere else:<pre><code>python3 -m pip install -r requirements.txt
 python3 server.py</code></pre></div></li>
-        <li><div><strong>Add the extension.</strong> Open <code>chrome://extensions</code>, turn on Developer mode, Load unpacked, choose the <code>extension</code> folder. Paste the pairing key from the board's <strong>Extension setup</strong>.</div></li>
+        <li><div><strong>Add the extension.</strong> Open <code>chrome://extensions</code>, turn on Developer mode, choose Load unpacked, and pick the <code>extension</code> folder. Paste the pairing key from the board's <strong>Extension setup</strong>.</div></li>
       </ol>
     </section>
+
+    <div class="cta">
+      <h2>Start a board in under a minute.</h2>
+      <p>Open the playground to feel how it works, then keep your own private copy.</p>
+      <div class="actions" style="justify-content:center">
+        <a class="btn primary" href="/board">Open the playground</a>
+        <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest" style="color:var(--paper)">Download</a>
+      </div>
+    </div>
 
     <footer>
       <span>MIT licensed · Python 3.10+ · no database server, no accounts</span>
       <span><a href="https://github.com/rishvaiyer/visual-brain-app">Source</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Releases</a></span>
     </footer>
   </main>
+  <script src="/landing.js" defer></script>
 </body>
 </html>

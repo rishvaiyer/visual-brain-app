@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f3ed">
+  <meta name="theme-color" content="#f6f1e7">
   <title>Visual Brain</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css?v=11">
+  <link rel="stylesheet" href="/glow.css?v=1">
 </head>
 <body>
   <div id="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand"><img class="brandmark" src="/brand/mark.svg" alt="" width="26" height="26"><a href="/" aria-label="Visual Brain home"><strong>Visual Brain</strong></a><button id="sidebar-close" aria-label="Close sidebar">×</button></div>
-      <div class="sideheading">Boards <span class="heading-actions"><button id="new-folder" title="New folder" aria-label="New folder">▤</button><button id="new-board" title="New board" aria-label="New board">+</button></span></div>
+      <div class="sideheading">Boards <span class="heading-actions"><button id="new-folder" title="New folder" aria-label="New folder"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></button><button id="new-board" title="New board" aria-label="New board"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button></span></div>
       <nav id="boards" aria-label="Boards"></nav>
       <div class="sideheading library-heading">Library <span id="asset-count">0</span></div>
-      <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search saved images" aria-label="Search saved images"></label>
+      <label class="search"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><input id="search" type="search" placeholder="Search saved images" aria-label="Search saved images"></label>
       <div class="library-filters"><select id="collection-filter" aria-label="Filter images by collection"><option value="">All collections</option></select><button id="favorite-filter" type="button" aria-pressed="false" title="Show favorites only">♡</button></div>
       <div id="library" class="library"></div>
       <details class="sidebar-options">
@@ -24,23 +25,23 @@
       </details>
     </aside>
     <main class="workspace">
-      <div id="demo-banner" class="demo-banner" hidden><strong>Public playground.</strong> <span id="demo-reset-time">Everything here is wiped every few hours.</span> Anyone can see what you add. <a href="/">Download Visual Brain</a> to keep your own private board.</div>
+      <div id="demo-banner" class="demo-banner" hidden><span class="demo-dot" aria-hidden="true"></span><span><strong>Public playground.</strong> <span id="demo-reset-time">Everything here is wiped every few hours.</span> <span class="demo-more">Anyone can see what you add.</span> <a href="/">Get your own private board</a></span><button id="demo-dismiss" type="button" aria-label="Dismiss notice">×</button></div>
       <header class="topbar">
-        <button id="sidebar-toggle" aria-label="Open boards and library">☰</button>
+        <button id="sidebar-toggle" aria-label="Open boards and library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
         <div class="board-title"><div class="board-name" id="board-name">Everything</div><button id="board-options" aria-label="Board options" title="Board options">···</button></div>
         <div class="tools" role="toolbar" aria-label="Canvas tools">
-          <button class="tool active" data-tool="select" title="Select (V)" aria-label="Select tool" aria-pressed="true">↖ <span>Select</span></button>
-          <button class="tool" data-tool="pan" title="Hand (H)" aria-label="Pan canvas" aria-pressed="false">✋ <span>Hand</span></button>
+          <button class="tool active" data-tool="select" title="Select (V)" aria-label="Select tool" aria-pressed="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.04 4.69a.5.5 0 0 1 .65-.65l16 6.5a.5.5 0 0 1-.06.95l-6.13 1.58a2 2 0 0 0-1.43 1.44l-1.58 6.12a.5.5 0 0 1-.95.07z"/></svg><span>Select</span></button>
+          <button class="tool" data-tool="pan" title="Hand (H)" aria-label="Pan canvas" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v2"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg><span>Hand</span></button>
           <span class="divider"></span>
-          <button id="upload" title="Add images" aria-label="Add images">＋ <span>Image</span></button>
-          <button class="tool" data-tool="text" title="Add text (T)" aria-label="Add text" aria-pressed="false">T <span>Text</span></button>
-          <button class="tool" data-tool="frame" title="Add frame (F)" aria-label="Add frame" aria-pressed="false">□ <span>Frame</span></button>
-          <button class="tool" data-tool="shape" title="Add shape" aria-label="Add shape" aria-pressed="false">◇ <span>Shape</span></button>
-          <button class="tool" data-tool="draw" title="Draw (D)" aria-label="Draw" aria-pressed="false">✎ <span>Draw</span></button>
+          <button id="upload" title="Add images" aria-label="Add images"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/><circle cx="9" cy="9" r="2"/></svg><span>Image</span></button>
+          <button class="tool" data-tool="text" title="Add text (T)" aria-label="Add text" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg><span>Text</span></button>
+          <button class="tool" data-tool="frame" title="Add frame (F)" aria-label="Add frame" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></svg><span>Frame</span></button>
+          <button class="tool" data-tool="shape" title="Add shape" aria-label="Add shape" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.3 10a.7.7 0 0 1-.63-1.08L11.4 3a.7.7 0 0 1 1.2-.04l3.7 5.94a.7.7 0 0 1-.57 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></svg><span>Shape</span></button>
+          <button class="tool" data-tool="draw" title="Draw (D)" aria-label="Draw" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/></svg><span>Draw</span></button>
           <span class="divider"></span>
-          <button id="delete-selection" title="Remove selected objects from this board" aria-label="Remove selected objects from this board" disabled>⌫ <span>Delete</span></button>
-          <button id="save-as" title="Save board image or all data to a folder" aria-label="Save as">Save As…</button>
-          <button id="fit" title="Fit content" aria-label="Fit content">Fit</button>
+          <button id="delete-selection" title="Remove selected objects from this board" aria-label="Remove selected objects from this board" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Delete</span></button>
+          <button id="save-as" title="Save board image or all data to a folder" aria-label="Save as"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Save As…</span></button>
+          <button id="fit" title="Fit content" aria-label="Fit content"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg><span>Fit</span></button>
           <span id="zoom-label" aria-label="Canvas zoom">100%</span>
         </div>
         <div class="status-area"><span id="save-status" aria-live="polite">Saved</span></div>
@@ -48,15 +49,15 @@
       <div id="viewport" class="viewport" tabindex="0" aria-label="Infinite canvas">
         <div id="stage" class="stage"></div>
         <section id="visual-search" class="visual-search" aria-label="Search all saved images">
-          <div class="visual-search-bar"><span aria-hidden="true">⌕</span><input id="visual-query" type="text" autocomplete="off" placeholder="Search titles, tags, or labels" aria-label="Search all saved images"><button id="visual-clear" type="button" aria-label="Clear image search" hidden>×</button></div>
+          <div class="visual-search-bar"><span aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><input id="visual-query" type="text" autocomplete="off" placeholder="Search titles, tags, or labels" aria-label="Search all saved images"><button id="visual-clear" type="button" aria-label="Clear image search" hidden>×</button></div>
           <div id="visual-tags" class="visual-tags" aria-label="Search by tag"></div>
           <p id="visual-search-status" class="visual-search-status" role="status" aria-live="polite"></p>
           <button id="visual-local" class="visual-theme" type="button" hidden title="Search saved image pixels locally with CLIP. No image or query is sent to a service.">Find by image content</button>
         </section>
         <div id="visual-results" class="visual-results" hidden></div>
         <div id="marquee" class="marquee" hidden></div>
-        <div id="empty" class="empty"><div class="empty-icon">▧</div><h1>Your board starts here</h1><p>Add images, paste from your clipboard, or drag files into this space.</p><button id="empty-upload">Add images</button></div>
-        <div class="canvas-hint">Scroll to move · ⌘/Ctrl + scroll to zoom · Shift + click to select more</div>
+        <div id="empty" class="empty"><div class="empty-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/><circle cx="9" cy="9" r="2"/></svg></div><h1>Your board starts here</h1><p>Add images, paste from your clipboard, or drag files into this space.</p><div class="empty-actions"><button id="empty-upload">Add images</button><button id="empty-sample" class="ghost" hidden>Or try the sample boards</button></div></div>
+        <div class="canvas-hint">Scroll to move · ⌘/Ctrl + scroll to zoom · Double-click a picture to open it</div>
         <label class="paper-picker">Background <select id="background-choice" aria-label="Board background"><option value="dots">Dot grid</option><option value="graph">Graph paper</option><option value="grid">Grid</option><option value="lined">Lined paper</option><option value="plain">Plain</option></select></label>
       </div>
     </main>
@@ -108,5 +109,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/app.js?v=15" defer></script>
   <script src="/save-as.js?v=7" defer></script>
+  <script src="/glow.js?v=1" defer></script>
 </body>
 </html>
