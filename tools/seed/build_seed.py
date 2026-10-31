@@ -23,7 +23,8 @@ DEFAULT_ASSETS = Path.home() / "Library/Group Containers/group.com.apple.freefor
 
 SERIF = "Georgia, 'Iowan Old Style', 'Times New Roman', serif"
 SANS = "Avenir Next, sans-serif"
-INK, MUTED = "#24251f", "#6a6c62"
+INK, MUTED = "#24251f", "#626459"
+TEXT_Z = 100  # labels sit above every picture, so a picture that drifts over one never hides it
 
 BOARDS = [
     # id, name, picks key, subtitle
@@ -136,6 +137,32 @@ def relax(rects, iters=420, allow=0.012, pull=0.004, margin=12):
             r["y"] += (r["home"][1] - (r["y"] + r["h"] / 2)) * pull
 
 
+def label_box(it, pad=6):
+    """Where a label or palette dot really paints. A text box is wide; its words are not."""
+    st = it["state"]
+    width = min(st["w"], len(st["text"]) * st["fontSize"] * .5) if it["kind"] == "text" else st["w"]
+    return [st["x"] - pad, st["y"] - pad, st["x"] + width + pad, st["y"] + st["h"] + pad]
+
+
+def clear_labels(groups, rects, reach=400):
+    """Slide each group of labels (a title with its note) the shortest way to a spot where none of it sits on a picture.
+
+    Pictures stay where the layout put them. Their boxes are trimmed a little, since a tilted picture does not fill its corners."""
+    pics = [(r["x"] + 10, r["y"] + 10, r["x"] + r["w"] - 10, r["y"] + r["h"] - 10) for r in rects]
+    offsets = sorted(((dx, dy) for dy in range(-reach, reach + 1, 10) for dx in range(-reach, reach + 1, 10)), key=lambda o: o[0] ** 2 + o[1] ** 2)
+    placed = []
+    for group in groups:
+        boxes = [label_box(it) for it in group]
+        for dx, dy in offsets:
+            moved = [(a + dx, b + dy, c + dx, d + dy) for a, b, c, d in boxes]
+            if not any(m[0] < p[2] and m[2] > p[0] and m[1] < p[3] and m[3] > p[1] for m in moved for p in pics + placed):
+                break
+        else:
+            continue
+        for it in group:
+            it["state"]["x"] += dx; it["state"]["y"] += dy
+        placed += moved
+
 def bounds(rects):
     return (min(r["x"] for r in rects), min(r["y"] for r in rects),
             max(r["x"] + r["w"] for r in rects), max(r["y"] + r["h"] for r in rects))
@@ -163,7 +190,7 @@ def swatches(board_id, colors, x0, y0, z):
         out.append({"board": board_id, "kind": "shape", "state": {
             "x": round(x0 + i * 40), "y": round(y0), "w": 28, "h": 28, "shape": "ellipse", "fill": color, "stroke": color,
             "strokeWidth": 1, "rotation": 0, "z": z + i}})
-    out.append({"board": board_id, "kind": "text", "state": {**text(x0 + len(colors) * 40 + 6, y0 + 4, 300, 24, "palette, from these pictures", 13, MUTED), "z": z + 9}})
+    out.append({"board": board_id, "kind": "text", "state": {**text(x0 + len(colors) * 40 + 6, y0 + 4, 300, 24, "palette, from these pictures", 13, MUTED), "z": TEXT_Z + z + 9}})
     return out
 
 
@@ -232,14 +259,15 @@ def main():
     everything = [r for rs in clusters.values() for r in rs]
     relax(everything, iters=500, pull=0.02)
     x0, y0, _, _ = bounds(everything)
-    items = [{"board": "main", "kind": "text", "state": {**text(x0, y0 - 250, 1000, 120, "Collected", 96, INK, SERIF, "500"), "z": 2}},
-             {"board": "main", "kind": "text", "state": {**text(x0 + 6, y0 - 128, 1000, 36, f"{len(entries)} pictures from everywhere. Drag, zoom, or search above.", 22, MUTED), "z": 3}}]
+    items = [{"board": "main", "kind": "text", "state": {**text(x0, y0 - 250, 1000, 120, "Collected", 96, INK, SERIF, "500"), "z": TEXT_Z + 2}},
+             {"board": "main", "kind": "text", "state": {**text(x0 + 6, y0 - 128, 1000, 36, f"{len(entries)} pictures from everywhere. Drag, zoom, or search above.", 22, MUTED), "z": TEXT_Z + 3}}]
     for n, (collection, (label, note, home, color)) in enumerate(CLUSTERS.items()):
         rects = clusters[collection]
         bx0, by0, bx1, by1 = bounds(rects)
         items.append(blob("main", rects, color, 4 + n))
-        items.append({"board": "main", "kind": "text", "state": {**text(bx0 - 6, by0 - 118, 620, 76, label, 60, INK, SERIF, "500", -2), "z": 12 + n}})
-        items.append({"board": "main", "kind": "text", "state": {**text(bx0 - 2, by0 - 44, 620, 32, note, 22, MUTED, SERIF, "400", -2), "z": 12 + n}})
+        items.append({"board": "main", "kind": "text", "state": {**text(bx0 - 6, by0 - 118, 620, 76, label, 60, INK, SERIF, "500", -2), "z": TEXT_Z + 12 + n}})
+        items.append({"board": "main", "kind": "text", "state": {**text(bx0 - 2, by0 - 44, 620, 32, note, 22, MUTED, SERIF, "400", -2), "z": TEXT_Z + 12 + n}})
+    clear_labels([items[:2]] + [items[2 + 3 * n + 1:2 + 3 * n + 3] for n in range(len(CLUSTERS))], everything)
     manifest["items"] += items + image_items("main", everything)
 
     # Each themed board: one loose pile, title and a palette pulled from the pictures.
@@ -250,11 +278,12 @@ def main():
         spiral(rects, 900, 640, 210 + 34 * math.sqrt(len(rects)))
         relax(rects, iters=500, pull=0.012)
         bx0, by0, bx1, by1 = bounds(rects)
-        manifest["items"] += [
-            {"board": board_id, "kind": "text", "state": {**text(bx0, by0 - 200, 1100, 84, name, 64, INK, SERIF, "500"), "z": 2}},
-            {"board": board_id, "kind": "text", "state": {**text(bx0 + 4, by0 - 116, 900, 34, subtitle, 20, MUTED), "z": 3}}]
-        manifest["items"] += swatches(board_id, palette([OUT / e["file"] for e in group]), bx0 + 4, by0 - 66, 4)
-        manifest["items"] += image_items(board_id, rects)
+        labels = [
+            {"board": board_id, "kind": "text", "state": {**text(bx0, by0 - 200, 1100, 84, name, 64, INK, SERIF, "500"), "z": TEXT_Z + 2}},
+            {"board": board_id, "kind": "text", "state": {**text(bx0 + 4, by0 - 116, 900, 34, subtitle, 20, MUTED), "z": TEXT_Z + 3}}]
+        labels += swatches(board_id, palette([OUT / e["file"] for e in group]), bx0 + 4, by0 - 66, 4)
+        clear_labels([labels], rects)
+        manifest["items"] += labels + image_items(board_id, rects)
 
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
     (OUT / "NOTICE.md").write_text(

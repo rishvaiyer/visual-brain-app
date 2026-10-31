@@ -774,7 +774,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -790,9 +790,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -826,7 +826,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": -2,
-    "z": 12
+    "z": 112
    }
   },
   {
@@ -842,9 +842,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": -2,
-    "z": 12
+    "z": 112
    }
   },
   {
@@ -878,7 +878,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": -2,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -894,9 +894,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": -2,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -920,7 +920,7 @@
    "kind": "text",
    "state": {
     "x": 1428,
-    "y": -19,
+    "y": -169,
     "w": 620,
     "h": 76,
     "text": "drawn",
@@ -930,7 +930,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": -2,
-    "z": 14
+    "z": 114
    }
   },
   {
@@ -938,7 +938,7 @@
    "kind": "text",
    "state": {
     "x": 1432,
-    "y": 55,
+    "y": -95,
     "w": 620,
     "h": 32,
     "text": "painted, printed, imagined",
@@ -946,9 +946,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": -2,
-    "z": 14
+    "z": 114
    }
   },
   {
@@ -971,8 +971,8 @@
    "board": "main",
    "kind": "text",
    "state": {
-    "x": 19,
-    "y": 577,
+    "x": -171,
+    "y": 757,
     "w": 620,
     "h": 76,
     "text": "small things",
@@ -982,15 +982,15 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": -2,
-    "z": 15
+    "z": 115
    }
   },
   {
    "board": "main",
    "kind": "text",
    "state": {
-    "x": 23,
-    "y": 651,
+    "x": -167,
+    "y": 831,
     "w": 620,
     "h": 32,
     "text": "tiny, shiny, a little unserious",
@@ -998,9 +998,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": -2,
-    "z": 15
+    "z": 115
    }
   },
   {
@@ -1023,8 +1023,8 @@
    "board": "main",
    "kind": "text",
    "state": {
-    "x": 891,
-    "y": 459,
+    "x": 951,
+    "y": 599,
     "w": 620,
     "h": 76,
     "text": "textures",
@@ -1034,15 +1034,15 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": -2,
-    "z": 16
+    "z": 116
    }
   },
   {
    "board": "main",
    "kind": "text",
    "state": {
-    "x": 895,
-    "y": 533,
+    "x": 955,
+    "y": 673,
     "w": 620,
     "h": 32,
     "text": "close up",
@@ -1050,9 +1050,9 @@
     "fontSize": 22,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": -2,
-    "z": 16
+    "z": 116
    }
   },
   {
@@ -1849,7 +1849,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -1865,9 +1865,9 @@
     "fontSize": 20,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -1963,9 +1963,9 @@
     "fontSize": 13,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -2154,7 +2154,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -2170,9 +2170,9 @@
     "fontSize": 20,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -2268,9 +2268,9 @@
     "fontSize": 13,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -2402,7 +2402,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -2418,9 +2418,9 @@
     "fontSize": 20,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -2516,9 +2516,9 @@
     "fontSize": 13,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -2764,7 +2764,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -2780,9 +2780,9 @@
     "fontSize": 20,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -2878,9 +2878,9 @@
     "fontSize": 13,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 13
+    "z": 113
    }
   },
   {
@@ -3031,7 +3031,7 @@
     "textAlign": "left",
     "color": "#24251f",
     "rotation": 0,
-    "z": 2
+    "z": 102
    }
   },
   {
@@ -3047,9 +3047,9 @@
     "fontSize": 20,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 3
+    "z": 103
    }
   },
   {
@@ -3145,9 +3145,9 @@
     "fontSize": 13,
     "fontWeight": "400",
     "textAlign": "left",
-    "color": "#6a6c62",
+    "color": "#626459",
     "rotation": 0,
-    "z": 13
+    "z": 113
    }
   },
   {

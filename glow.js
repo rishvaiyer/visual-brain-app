@@ -134,6 +134,20 @@
     openViewer(tile.dataset.asset, ids);
   }, true);
 
+  // ---- Tools: show when some of them are scrolled out of sight ---------------------------------
+  const toolbar = document.querySelector(".tools");
+  if (toolbar) {
+    const sync = () => {
+      const room = toolbar.scrollWidth - toolbar.clientWidth;
+      toolbar.classList.toggle("more-right", room > 2 && toolbar.scrollLeft < room - 2);
+      toolbar.classList.toggle("more-left", toolbar.scrollLeft > 2);
+    };
+    toolbar.addEventListener("scroll", sync, { passive: true });
+    addEventListener("resize", sync);
+    if ("ResizeObserver" in window) new ResizeObserver(sync).observe(toolbar);
+    sync();
+  }
+
   // ---- Hooks ------------------------------------------------------------------------------------
   const baseRenderAll = renderAll;
   renderAll = function () { baseRenderAll(); maybeWelcome(); };

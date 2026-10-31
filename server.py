@@ -327,8 +327,9 @@ def reset_demo_data():
                 if file.is_file():
                     file.unlink(missing_ok=True)
         (DATA / "clip-index.sqlite3").unlink(missing_ok=True)
-    if sample_available():
-        seed_sample()
+        # Still under the lock: a page that loads mid-reset waits a moment instead of opening on an empty board.
+        if sample_available():
+            seed_sample()
     DEMO_RESET_AT =datetime.fromtimestamp(time.time() + DEMO_RESET_HOURS * 3600, timezone.utc).isoformat(timespec="seconds")
 
 
@@ -803,7 +804,7 @@ class Handler(BaseHTTPRequestHandler):
             # Same-origin web app only. Extensions use their manually paired key.
             if not self.same_origin_ok():
                 return self.error("Forbidden", 403)
-            with connection() as db:
+            with LOCK, connection() as db:
                 return self.json({"key": PAIRING_KEY if not hosting.hosted() else "",
                                   "can_edit": not hosting.hosted() or self.owner_read_ok(),
                                   "boards": [row_dict(r) for r in db.execute("SELECT * FROM boards ORDER BY created_at")],

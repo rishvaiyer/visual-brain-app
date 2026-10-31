@@ -16,6 +16,21 @@
       const load = () => { if (!frame.src) frame.src = "/board"; };
       if ("IntersectionObserver" in window) new IntersectionObserver((entries, io) => { if (entries.some(e => e.isIntersecting)) { load(); io.disconnect(); } }, { rootMargin: "300px" }).observe(section);
       else load();
+
+      // The board pans on scroll, so a page scrolling past it would get stuck inside it. Keep it behind a cover until
+      // someone clicks, and put the cover back as soon as they move away.
+      const stage = document.getElementById("playground-stage"), lock = document.getElementById("playground-lock"), live = document.getElementById("playground-live");
+      const touch = matchMedia("(hover: none)").matches;
+      const setLive = on => {
+        stage.classList.toggle("live", on);
+        live.hidden = !on;
+        live.textContent = touch ? "Live. Tap outside to scroll the page." : "Live. Move away to scroll the page.";
+        if (on) { load(); frame.focus({ preventScroll: true }); }
+        else if (document.activeElement === frame) frame.blur();
+      };
+      lock.addEventListener("click", () => setLive(true));
+      stage.addEventListener("mouseleave", () => { if (!touch) setLive(false); });
+      document.addEventListener("pointerdown", e => { if (!stage.contains(e.target)) setLive(false); });
     } catch {}
   })();
 })();

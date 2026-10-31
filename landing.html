@@ -6,18 +6,26 @@
   <meta name="theme-color" content="#f6f1e7">
   <title>Visual Brain</title>
   <meta name="description" content="No-fuss Pinterest, on your own computer. Save any image from the web with one click, arrange it on infinite boards, find it later. Nothing leaves your machine.">
+  <meta property="og:type" content="website">
   <meta property="og:title" content="Visual Brain">
   <meta property="og:description" content="No-fuss Pinterest, on your own computer.">
-  <meta property="og:image" content="/brand/logo-512.png">
+  <meta property="og:url" content="https://visual-brain-production-9eb4.up.railway.app/">
+  <meta property="og:image" content="https://visual-brain-production-9eb4.up.railway.app/brand/demo-poster.jpg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="720">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
-    :root { color-scheme: light; --paper: #f6f1e7; --paper-2: #efe8d9; --card: #fbf8f1; --ink: #24251f; --muted: #6a6c62; --faint: #8a8574; --line: #e1d9c8; --terra: #d98b5a; --terra-d: #b9693a; --sage: #8fa08a; --gold: #c9a56a;
+    :root { color-scheme: light; --paper: #f6f1e7; --paper-2: #efe8d9; --card: #fbf8f1; --ink: #24251f; --muted: #626459; --faint: #68645a; --line: #e1d9c8; --terra: #d98b5a; --terra-d: #b9693a; --terra-text: #9c5428; --sage: #8fa08a; --gold: #c9a56a;
       --serif: Georgia, "Iowan Old Style", "Times New Roman", serif; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
       background-image: radial-gradient(#dbd2bf .9px, transparent .9px); background-size: 24px 24px; }
     a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--terra-text); outline-offset: 3px; border-radius: 6px; }
+    .btn:focus-visible, .pill:focus-visible { border-radius: 999px; }
+    .cta :focus-visible { outline-color: var(--terra); }
     main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 22px 0 80px; }
     .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -34,7 +42,7 @@
     .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); font-size: 12.5px; color: var(--muted); }
     .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: #6cc07f; box-shadow: 0 0 0 4px rgba(108,192,127,.2); }
     .hero h1 { margin: 20px 0 18px; font: 500 clamp(42px, 6vw, 74px)/1 var(--serif); letter-spacing: -.035em; }
-    .hero h1 em { font-style: italic; color: var(--terra); }
+    .hero h1 em { font-style: italic; color: var(--terra-d); }
     .lede { margin: 0 0 30px; max-width: 480px; font-size: 18.5px; color: var(--muted); line-height: 1.6; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 24px; border-radius: 999px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: var(--card); transition: transform .15s, background .15s, color .15s; }
@@ -64,7 +72,7 @@
     .toolbar .ic { width: 17px; height: 17px; }
 
     section { margin-top: clamp(64px, 10vw, 112px); }
-    .kicker { font-size: 12px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--terra-d); }
+    .kicker { font-size: 12px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; color: var(--terra-text); }
     h2 { margin: 10px 0 14px; font: 500 clamp(30px, 4vw, 46px)/1.08 var(--serif); letter-spacing: -.03em; max-width: 720px; }
     .sub { margin: 0 0 28px; max-width: 600px; font-size: 17px; color: var(--muted); }
     .window { border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--card); box-shadow: 0 50px 100px -56px rgba(36,37,31,.65); }
@@ -72,7 +80,17 @@
     .window-bar i { width: 11px; height: 11px; border-radius: 50%; background: #ddd2bc; }
     .window-bar a { margin-left: auto; color: var(--ink); font-weight: 600; text-decoration: none; }
     .window-bar a:hover { color: var(--terra-d); }
+    .window-bar .live { margin-left: auto; color: var(--faint); }
+    .window-bar .live[hidden] { display: none; }
+    .window-bar .live:not([hidden]) + a { margin-left: 16px; }
+    .stage { position: relative; }
     .window iframe { display: block; width: 100%; height: min(720px, 78vh); border: 0; background: var(--paper); }
+    /* The board pans on scroll, so left alone it traps the page's own scrolling. It stays behind this cover until someone clicks. */
+    .stage-lock { position: absolute; inset: 0; z-index: 2; display: grid; place-items: end center; padding: 0 0 28px; border: 0; background: transparent; cursor: pointer; font: inherit; }
+    .stage-lock span { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 999px; background: var(--ink); color: var(--paper); font-weight: 600; font-size: 15px; box-shadow: 0 18px 34px -16px rgba(36,37,31,.7); transition: transform .15s, background .15s; }
+    .stage-lock:hover span, .stage-lock:focus-visible span { background: var(--terra-d); transform: translateY(-2px); }
+    .stage-lock:focus-visible { outline-offset: -4px; border-radius: 0 0 22px 22px; }
+    .stage.live .stage-lock { display: none; }
 
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     .card { padding: 26px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); transition: transform .25s, box-shadow .25s; }
@@ -80,8 +98,12 @@
     .card .badge { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 18px; border-radius: 14px; background: var(--paper-2); color: var(--terra-d); }
     .card h3 { margin: 0 0 8px; font: 500 22px/1.15 var(--serif); letter-spacing: -.02em; }
     .card p { margin: 0; font-size: 15px; color: var(--muted); }
-    ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: step; max-width: 800px; }
-    ol.steps li { display: grid; grid-template-columns: 40px 1fr; gap: 18px; align-items: start; padding: 20px 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); }
+    .run { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 72px); align-items: start; }
+    .run h2 { max-width: 420px; }
+    .run .sub { margin-bottom: 0; }
+    ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; counter-reset: step; min-width: 0; }
+    ol.steps li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 18px; align-items: start; padding: 20px 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); }
+    ol.steps li > div { min-width: 0; overflow-wrap: anywhere; }
     ol.steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 500 18px/1 var(--serif); }
     code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ebe4d4; padding: 2px 7px; border-radius: 6px; }
     pre { margin: 12px 0 0; padding: 14px 16px; background: #ebe4d4; border-radius: 12px; overflow-x: auto; }
@@ -92,9 +114,12 @@
     .cta .btn { border-color: var(--paper); }
     .cta .btn.primary { background: var(--paper); color: var(--ink); }
     .cta .btn.primary:hover { background: var(--terra); color: #1b1b17; border-color: var(--terra); }
+    .cta .btn.ghost { background: transparent; color: var(--paper); border-color: rgba(246,241,231,.5); }
+    .cta .btn.ghost:hover { background: rgba(246,241,231,.1); border-color: var(--paper); }
     footer { margin-top: 56px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--faint); border-top: 1px solid var(--line); padding-top: 20px; }
 
-    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 40px; } .board { order: 2; } nav .links a:not(.pill) { display: none; } }
+    @media (max-width: 900px) { .hero { grid-template-columns: 1fr; gap: 40px; } .board { order: 2; } nav .links a:not(.pill) { display: none; } .run { grid-template-columns: 1fr; gap: 24px; } .run h2 { max-width: 720px; } .run .sub { margin-bottom: 4px; } }
+    @media (max-width: 520px) { pre { white-space: pre-wrap; overflow-wrap: anywhere; } .actions .btn { flex: 1 1 100%; } .cta .actions .btn { flex: 1 1 100%; } ol.steps li { grid-template-columns: 1fr; gap: 12px; padding: 18px; } }
     @media (max-width: 520px) { .searchbar { font-size: 12.5px; padding: 8px 14px 8px 11px; } .toolbar i { width: 28px; height: 28px; } .window iframe { height: 70vh; } }
     @media (prefers-reduced-motion: reduce) { .pin, .card, .btn { transition: none; } .searchbar span { animation: none; } html { scroll-behavior: auto; } }
   </style>
@@ -139,11 +164,14 @@
 
     <section id="try" hidden>
       <div class="kicker">Try it</div>
-      <h2>This is the real thing, not a screenshot.</h2>
-      <p class="sub">Drag a picture. Scroll to move, hold <code>Ctrl</code> or <code>⌘</code> and scroll to zoom. Search for a colour or a mood. Double-click any picture to see it large.</p>
+      <h2>Move a few pictures around.</h2>
+      <p class="sub">Drag one anywhere. Scroll to move, hold <code>Ctrl</code> or <code>⌘</code> and scroll to zoom. Search for a colour or a mood. Double-click any picture to see it large.</p>
       <div class="window">
-        <div class="window-bar"><i></i><i></i><i></i><span>The playground</span><a href="/board">Open full screen</a></div>
-        <iframe id="playground" title="Visual Brain playground" loading="lazy"></iframe>
+        <div class="window-bar"><i></i><i></i><i></i><span>The playground</span><span class="live" id="playground-live" hidden></span><a href="/board">Open full screen</a></div>
+        <div class="stage" id="playground-stage">
+          <iframe id="playground" title="Visual Brain playground" loading="lazy"></iframe>
+          <button class="stage-lock" id="playground-lock" type="button" aria-label="Activate the live playground"><span>Click to try it</span></button>
+        </div>
       </div>
     </section>
 
@@ -158,9 +186,12 @@
       </div>
     </section>
 
-    <section id="run">
-      <div class="kicker">Run it</div>
-      <h2>Two minutes, start to finish.</h2>
+    <section id="run" class="run">
+      <div>
+        <div class="kicker">Run it</div>
+        <h2>Two minutes, start to finish.</h2>
+        <p class="sub">Any computer with Python 3.10 or newer. No account, no database server.</p>
+      </div>
       <ol class="steps">
         <li><div><strong>Download</strong> the latest release and unzip it, or <code>git clone</code> the repository.</div></li>
         <li><div><strong>Start it.</strong> On a Mac, double-click <code>Open Visual Brain.command</code>. Anywhere else:<pre><code>python3 -m pip install -r requirements.txt
@@ -174,7 +205,7 @@ python3 server.py</code></pre></div></li>
       <p>Open the playground to feel how it works, then keep your own private copy.</p>
       <div class="actions" style="justify-content:center">
         <a class="btn primary" href="/board">Open the playground</a>
-        <a class="btn" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest" style="color:var(--paper)">Download</a>
+        <a class="btn ghost" href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a>
       </div>
     </div>
 
@@ -183,6 +214,6 @@ python3 server.py</code></pre></div></li>
       <span><a href="https://github.com/rishvaiyer/visual-brain-app">Source</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Releases</a></span>
     </footer>
   </main>
-  <script src="/landing.js" defer></script>
+  <script src="/landing.js?v=2" defer></script>
 </body>
 </html>

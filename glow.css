@@ -1,7 +1,7 @@
 /* Visual Brain, gallery-paper skin. Loads after style.css and only overrides it.
    Palette and type match the landing page: cream paper, ink, terracotta, sage, gold. */
 :root {
-  --paper: #f6f1e7; --paper-2: #efe8d9; --card: #fbf8f1; --ink: #24251f; --muted: #6a6c62; --faint: #8a8574;
+  --paper: #f6f1e7; --paper-2: #efe8d9; --card: #fbf8f1; --ink: #24251f; --muted: #626459; --faint: #68645a;
   --line: #e1d9c8; --terra: #d98b5a; --terra-d: #b9693a; --sage: #8fa08a; --gold: #c9a56a;
   --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
   --shadow-s: 0 1px 2px rgba(36,37,31,.12), 0 14px 26px -16px rgba(36,37,31,.55);
@@ -84,11 +84,25 @@ button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-v
 #upload span, #save-as span { display: inline; }
 .board-title { flex: 0 1 auto; min-width: 120px; }
 .board-name { overflow: visible; max-width: none; text-overflow: clip; }
+/* The tools never wrap or show a scrollbar. When there is not room for all of them they scroll sideways,
+   and a soft edge on the clipped side says so (the .more-left / .more-right classes come from glow.js). */
+.tools { scrollbar-width: none; max-width: 100%; }
+.tools::-webkit-scrollbar { display: none; }
+.tools.more-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent); }
+.tools.more-left { -webkit-mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(270deg, #000 calc(100% - 34px), transparent); }
+.tools.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent); }
+/* Tablet: every tool as an icon, so the Save button and the zoom level stay on screen. */
+@media (max-width: 1100px) {
+  #upload span, #save-as span { display: none; }
+  .tools button { padding: 6px 9px; }
+  #zoom-label { min-width: 36px; padding-right: 6px; }
+  .board-title { min-width: 0; }
+}
 
 /* Canvas */
 .viewport { background-color: var(--paper); }
 .viewport[data-background="dots"] { background-image: radial-gradient(#d6ccb6 .9px, transparent .9px); }
-.canvas-hint { left: 20px; bottom: 15px; color: #a79f8c; font-size: 11.5px; }
+.canvas-hint { left: 18px; bottom: 14px; max-width: calc(100% - 250px); padding: 6px 13px; border-radius: 14px; background: rgba(251,248,241,.92); border: 1px solid var(--line); color: #5f5b4e; font-size: 11.5px; line-height: 1.35; box-shadow: 0 8px 18px -14px rgba(36,37,31,.6); }
 .paper-picker { right: 18px; bottom: 14px; border-radius: 999px; background: rgba(251,248,241,.92); border-color: var(--line); padding: 5px 10px 5px 14px; box-shadow: 0 8px 18px -14px rgba(36,37,31,.6); }
 .item.image { background: #fff; border-radius: 3px; box-shadow: var(--shadow-s); transition: box-shadow .25s ease; }
 .item.image .image-clip { border-radius: 3px; }
