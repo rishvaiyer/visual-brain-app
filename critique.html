@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Private board review · Visual Brain</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/critique.css">
+</head>
+<body>
+  <header class="review-head"><div><strong>Visual Brain</strong><h1 id="review-title">Private board review</h1><p>Click an image or model to pin a note exactly where you mean.</p></div><button id="review-refresh" type="button">Refresh notes</button></header>
+  <main class="review-layout"><section id="review-objects" class="review-objects" aria-label="Board objects"></section><aside class="review-side"><div id="review-form"><h2>Add a note</h2><p id="review-point">Choose a spot on an object.</p><label>Your name<input id="review-author" maxlength="60" autocomplete="name" placeholder="Your name"></label><label>Note<textarea id="review-body" maxlength="1000" rows="4" placeholder="What should change here?"></textarea></label><button id="review-post" type="button" disabled>Post note</button></div><h2>Notes</h2><div id="review-notes" aria-live="polite"></div><p class="review-privacy">This link shows only this board. Its owner can revoke access.</p></aside></main>
+  <div id="review-message" role="status" aria-live="polite"></div>
+  <script src="/critique.js" defer></script>
+</body>
+</html>

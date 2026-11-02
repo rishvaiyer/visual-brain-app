@@ -7,6 +7,12 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .DS_Store
+.local-3d-worker/
+.runs/
+.tools/
+.evidence/
+.venv/
+.tmp-vendor/
 
 # Mac-only helpers and packaging that the container has no use for.
 *.command
@@ -15,5 +21,4 @@ __pycache__/
 extension/
 tools/
 tests/
-vendor/
 docs/

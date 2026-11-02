@@ -1,5 +1,8 @@
 """Focused hosted security checks without opening a listening socket."""
 import os
+import hashlib
+import json
+import secrets
 import sqlite3
 import tempfile
 import unittest
@@ -39,6 +42,49 @@ def handler(path, headers=None):
 class HostedSecurityTests(unittest.TestCase):
     def owner_cookie(self):
         return f"{hosting.COOKIE_NAME}={hosting.issue(Path(DATA_DIR.name))}"
+
+    def test_private_critique_link_is_board_scoped_and_revocable(self):
+        suffix = secrets.token_hex(4)
+        board_a, board_b = "board_a_" + suffix, "board_b_" + suffix
+        image_a, image_b = "img_a_" + suffix, "img_b_" + suffix
+        item_a, item_b = "item_a_" + suffix, "item_b_" + suffix
+        token = secrets.token_urlsafe(32)
+        with server.connection() as db:
+            for board in (board_a, board_b):
+                db.execute("INSERT INTO boards(id,name,view,created_at,updated_at) VALUES(?,?,?,?,?)",
+                           (board, board, "{}", server.now(), server.now()))
+            for image in (image_a, image_b):
+                db.execute("INSERT INTO assets(id,sha256,mime,filename,source_url,image_url,alt,title,tags,collection,favorite,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (image, hashlib.sha256(image.encode()).hexdigest(), "image/png", image + ".png", "", "", "", image, "[]", "", 0, server.now()))
+            for item_id, board, image in ((item_a, board_a, image_a), (item_b, board_b, image_b)):
+                db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)", (item_id, board, "image", image,
+                           json.dumps({"x": 0, "y": 0, "w": 100, "h": 100}), server.now()))
+            db.execute("INSERT INTO critique_invites VALUES(?,?,?)",
+                       (board_a, hashlib.sha256(token.encode()).hexdigest(), server.now()))
+            db.commit()
+        shared = handler("/api/critique/shared/" + token)
+        shared.do_GET()
+        self.assertEqual(shared.responses[0][0], 200)
+        self.assertEqual([image["id"] for image in shared.responses[0][1]["images"]], [image_a])
+        self.assertEqual([item["id"] for item in shared.responses[0][1]["items"]], [item_a])
+        other = handler(f"/api/critique/shared/{token}/assets/{image_b}")
+        other.do_GET()
+        self.assertEqual(other.responses[0][0], 404)
+        rejected = handler(f"/api/critique/shared/{token}/comments", {"Origin": "https://attacker.example"})
+        rejected.command = "POST"
+        rejected.do_POST()
+        self.assertEqual(rejected.responses[0][0], 403)
+        allowed = handler(f"/api/critique/shared/{token}/comments", {"Origin": "https://visual.example"})
+        allowed.command = "POST"
+        allowed.body = lambda: {"item_id": item_a, "x": .3, "y": .4, "author": "Reviewer", "body": "Look here"}
+        allowed.do_POST()
+        self.assertEqual(allowed.responses[0][0], 201)
+        with server.connection() as db:
+            db.execute("DELETE FROM critique_invites WHERE board_id=?", (board_a,))
+            db.commit()
+        revoked = handler("/api/critique/shared/" + token)
+        revoked.do_GET()
+        self.assertEqual(revoked.responses[0][0], 404)
 
     def test_hosted_capabilities_are_private_and_match_runtime(self):
         anonymous = handler("/api/capabilities")
