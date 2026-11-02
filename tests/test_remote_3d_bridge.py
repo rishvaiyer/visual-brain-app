@@ -47,6 +47,17 @@ def triangle_glb():
 
 
 class RemoteBridgeHTTP(unittest.TestCase):
+    def test_worker_token_can_load_from_protected_credential_file(self):
+        import free_3d_worker as worker
+        with tempfile.TemporaryDirectory() as temporary:
+            credential = Path(temporary) / "worker-token"
+            credential.write_text("from-file-token\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"VISUAL_BRAIN_WORKER_TOKEN_FILE": str(credential),
+                                              "VISUAL_BRAIN_WORKER_TOKEN": "environment-token"}):
+                self.assertEqual(worker.load_worker_token(), "from-file-token")
+                credential.unlink()
+                self.assertEqual(worker.load_worker_token(), "")
+
     def test_multi_photo_failure_keeps_guidance_and_hides_trace(self):
         import free_3d
         with tempfile.TemporaryDirectory() as temporary:

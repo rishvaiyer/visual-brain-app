@@ -28,7 +28,19 @@ import free_3d
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("VISUAL_BRAIN_WORKER_PORT", "8788"))
-TOKEN = os.environ.get("VISUAL_BRAIN_WORKER_TOKEN", "")
+
+
+def load_worker_token() -> str:
+    credential = os.environ.get("VISUAL_BRAIN_WORKER_TOKEN_FILE")
+    if credential:
+        try:
+            return Path(credential).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""  # A missing configured credential must not fall back to another token.
+    return os.environ.get("VISUAL_BRAIN_WORKER_TOKEN", "")
+
+
+TOKEN = load_worker_token()
 CALLBACK_ORIGIN = os.environ.get("VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN", "").rstrip("/")
 INCOMING = free_3d.WORKER / "incoming"
 RESULTS = free_3d.WORKER / "results"
