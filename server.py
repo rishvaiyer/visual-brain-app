@@ -34,6 +34,7 @@ from PIL import Image, ImageOps
 import hosting
 import visual_features
 import free_3d
+import outbound_3d
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("VISUAL_BRAIN_DATA_DIR", str(ROOT / "data"))).resolve()
@@ -151,6 +152,9 @@ PAIRING_KEY = setup()
 LOCK = threading.RLock()
 ANALYSIS_LOCK = threading.Lock()
 MODEL_GENERATION_LOCK = threading.Lock()
+OUTBOUND_BRIDGE = outbound_3d.WorkerBridge(
+    os.environ.get("VISUAL_BRAIN_3D_REMOTE_TOKEN", ""),
+    os.environ.get("VISUAL_BRAIN_3D_OUTBOUND") == "1")
 
 
 def connection():
@@ -411,9 +415,9 @@ def capabilities():
         "vision_labels": mac_local,
         "local_visual_search": local_visual_search_available(),
         "similar_images": True,
-        "free_3d": free_3d.worker_available(),
+        "free_3d": generation_available(),
         "max_3d_images": 2 if hosting.DEMO else 8,
-        "free_3d_multi": free_3d.multi_worker_available(),
+        "free_3d_multi": generation_available(multi=True),
         "min_3d_multi_images": free_3d.MIN_MULTI_PHOTOS,
         "max_3d_multi_images": free_3d.MAX_MULTI_PHOTOS,
         "model_import": True,
@@ -421,6 +425,12 @@ def capabilities():
         "extension_capture": not hosting.hosted(),
         "sample_board": sample_available(),
     }
+
+
+def generation_available(multi: bool = False) -> bool:
+    if OUTBOUND_BRIDGE.enabled:
+        return OUTBOUND_BRIDGE.connected(multi)
+    return free_3d.multi_worker_available() if multi else free_3d.worker_available()
 
 
 def forget_local_visual_vectors(asset_ids):
@@ -727,6 +737,9 @@ def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> Non
                     sources = [free_3d.prepared_multi_source(ASSETS / filename,
                                Path(temporary) / f"photo_{index:03}.jpg")
                                for index, filename in enumerate(source_filename)]
+                    if OUTBOUND_BRIDGE.enabled:
+                        OUTBOUND_BRIDGE.send_job(model_id, "multi", free_3d.multi_archive(sources))
+                        continue  # the Ryzen worker posts the finished model to the callback
                     if free_3d.multi_local_available():
                         free_3d.generate_multi(sources, output)
                     else:
@@ -734,6 +747,9 @@ def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> Non
                         continue  # the worker posts the finished GLB to the callback route
                 else:
                     source = free_3d.cropped_source(ASSETS / source_filename, Path(temporary) / "source.jpg", crop)
+                    if OUTBOUND_BRIDGE.enabled:
+                        OUTBOUND_BRIDGE.send_job(model_id, "single", free_3d.remote_image_bytes(source))
+                        continue  # the Ryzen worker posts the finished model to the callback
                     if free_3d.local_available():
                         free_3d.generate(source, output)
                     else:
@@ -957,6 +973,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path == "/api/3d/worker/socket":
+            return OUTBOUND_BRIDGE.serve(self)
         parts = path.strip("/").split("/")
         if len(parts) == 2 and parts[0] == "critique":
             if not critique_board_for_token(parts[1]):
@@ -1310,7 +1328,7 @@ class Handler(BaseHTTPRequestHandler):
                 grouped = data.get("mode") == "one-object"
                 if data.get("mode") not in (None, "separate", "one-object"):
                     raise ValueError("Choose a supported 3D mode")
-                if not (free_3d.multi_worker_available() if grouped else free_3d.worker_available()):
+                if not generation_available(grouped):
                     return self.error("3D creation is temporarily unavailable. You can still add a 3D model file.", 503)
                 source_board_id = str(data.get("board_id") or "")
                 source_ids = data.get("item_ids")
@@ -1391,7 +1409,7 @@ class Handler(BaseHTTPRequestHandler):
                         return self.error("Model cannot be retried", 404)
                     source_ids = json.loads(model["source_asset_ids"] or "[]")
                     grouped = len(source_ids) > 1
-                    if not (free_3d.multi_worker_available() if grouped else free_3d.worker_available()):
+                    if not generation_available(grouped):
                         return self.error("Free 3D generation is not installed here", 503)
                     if grouped:
                         assets = [db.execute("SELECT filename FROM assets WHERE id=? AND trashed_at IS NULL", (asset_id,)).fetchone()
