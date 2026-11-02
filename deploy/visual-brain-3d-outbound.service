@@ -1,0 +1,19 @@
+[Unit]
+Description=Visual Brain private 3D outbound connector
+After=network-online.target visual-brain-3d.service
+Wants=network-online.target
+Requires=visual-brain-3d.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/norollbacks/apps/visual-brain-worker
+LoadCredential=worker-token:/home/norollbacks/.config/visual-brain/worker-token
+Environment=VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN=https://visual-brain-production-9eb4.up.railway.app
+Environment=VISUAL_BRAIN_WORKER_PORT=18788
+Environment=VISUAL_BRAIN_3D_WORKER_DIR=/home/norollbacks/work/visual-brain-seven/.local-3d-worker
+ExecStart=/home/norollbacks/apps/visual-brain-worker/.venv/bin/python /home/norollbacks/apps/visual-brain-worker/free_3d_outbound.py
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

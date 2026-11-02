@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import ipaddress
 import json
 import math
@@ -31,11 +32,15 @@ import requests
 from PIL import Image, ImageOps
 
 import hosting
+import visual_features
+import free_3d
+import outbound_3d
 
 ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("VISUAL_BRAIN_DATA_DIR", str(ROOT / "data"))).resolve()
 ASSETS = DATA / "assets"
 FONTS = DATA / "fonts"
+MODELS = DATA / "models"
 DB = DATA / "visual-brain.sqlite3"
 KEY_FILE = DATA / "pairing-key.txt"
 # Loopback by default; hosted deployments use the configured bind address.
@@ -59,6 +64,7 @@ def now() -> str:
 def setup() -> str:
     ASSETS.mkdir(parents=True, exist_ok=True)
     FONTS.mkdir(parents=True, exist_ok=True)
+    MODELS.mkdir(parents=True, exist_ok=True)
     if not KEY_FILE.exists():
         KEY_FILE.write_text(secrets.token_urlsafe(24), encoding="utf-8")
         KEY_FILE.chmod(0o600)
@@ -88,6 +94,23 @@ def setup() -> str:
               filename TEXT NOT NULL, mime TEXT NOT NULL,
               created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS models (
+              id TEXT PRIMARY KEY, filename TEXT NOT NULL, source_asset_id TEXT,
+              status TEXT NOT NULL, error TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+              source_crop TEXT NOT NULL DEFAULT '{}',
+              source_asset_ids TEXT NOT NULL DEFAULT '[]'
+            );
+            CREATE TABLE IF NOT EXISTS critique_invites (
+              board_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
+              created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS critique_comments (
+              id TEXT PRIMARY KEY, board_id TEXT NOT NULL, item_id TEXT NOT NULL,
+              x REAL NOT NULL, y REAL NOT NULL, author TEXT NOT NULL,
+              body TEXT NOT NULL, created_at TEXT NOT NULL,
+              resolved_at TEXT
+            );
         """)
         existing_columns = {r[1] for r in db.execute("PRAGMA table_info(assets)")}
         if "pixel_width" not in existing_columns:
@@ -106,19 +129,32 @@ def setup() -> str:
             db.execute("ALTER TABLE assets ADD COLUMN auto_analyzed_at TEXT")
         if "credit" not in existing_columns:
             db.execute("ALTER TABLE assets ADD COLUMN credit TEXT NOT NULL DEFAULT ''")
+        for column in ("source_title", "source_author", "source_license", "source_license_url"):
+            if column not in existing_columns:
+                db.execute(f"ALTER TABLE assets ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
         board_columns = {r[1] for r in db.execute("PRAGMA table_info(boards)")}
         if "folder_id" not in board_columns:
             db.execute("ALTER TABLE boards ADD COLUMN folder_id TEXT")
+        model_columns = {r[1] for r in db.execute("PRAGMA table_info(models)")}
+        if "source_crop" not in model_columns:
+            db.execute("ALTER TABLE models ADD COLUMN source_crop TEXT NOT NULL DEFAULT '{}'")
+        if "source_asset_ids" not in model_columns:
+            db.execute("ALTER TABLE models ADD COLUMN source_asset_ids TEXT NOT NULL DEFAULT '[]'")
         db.execute("INSERT OR IGNORE INTO boards(id,name,view,created_at,updated_at) VALUES(?,?,?,?,?)",
                    ("main", "Everything", json.dumps({"x": 0, "y": 0, "zoom": 1}), now(), now()))
         enrichment.init_db(db)
         db.execute("UPDATE boards SET name='Everything', updated_at=? WHERE id='main' AND name='Main board'", (now(),))
+        db.execute("UPDATE models SET status='failed',error='Generation was interrupted. Retry this model.' WHERE status IN ('queued','running')")
     return KEY_FILE.read_text(encoding="utf-8").strip()
 
 
 PAIRING_KEY = setup()
 LOCK = threading.RLock()
 ANALYSIS_LOCK = threading.Lock()
+MODEL_GENERATION_LOCK = threading.Lock()
+OUTBOUND_BRIDGE = outbound_3d.WorkerBridge(
+    os.environ.get("VISUAL_BRAIN_3D_REMOTE_TOKEN", ""),
+    os.environ.get("VISUAL_BRAIN_3D_OUTBOUND") == "1")
 
 
 def connection():
@@ -137,9 +173,27 @@ def row_dict(row):
         d["auto_tags"] = json.loads(d["auto_tags"])
     if "state" in d:
         d["state"] = json.loads(d["state"])
+    if "source_asset_ids" in d:
+        d["source_asset_ids"] = json.loads(d["source_asset_ids"])
     if "view" in d:
         d["view"] = json.loads(d["view"])
     return d
+
+
+def safe_http_url(value) -> str:
+    url = str(value or "").strip()[:2048]
+    try:
+        parsed = urlparse(url)
+        return url if parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username and not parsed.password else ""
+    except ValueError:
+        return ""
+
+
+def active_image_records() -> list[dict]:
+    with connection() as db:
+        rows = db.execute("SELECT id,filename,collection,tags FROM assets WHERE trashed_at IS NULL ORDER BY created_at").fetchall()
+    return [{"id": row["id"], "path": str(ASSETS / row["filename"]),
+             "collection": row["collection"], "tags": json.loads(row["tags"])} for row in rows]
 
 
 def detect_mime(raw: bytes) -> str | None:
@@ -317,12 +371,12 @@ def reset_demo_data():
     """Wipe every board, image and font, then lay the sample boards back out so the public playground starts fresh."""
     global DEMO_RESET_AT
     with LOCK, connection() as db:
-        for table in ("items", "asset_enrichment", "assets", "fonts", "boards", "folders"):
+        for table in ("critique_comments", "critique_invites", "items", "asset_enrichment", "models", "assets", "fonts", "boards", "folders"):
             db.execute(f"DELETE FROM {table}")
         db.execute("INSERT INTO boards(id,name,view,created_at,updated_at) VALUES(?,?,?,?,?)",
                    ("main", "Everything", json.dumps({"x": 0, "y": 0, "zoom": 1}), now(), now()))
         db.commit()
-        for folder in (ASSETS, FONTS):
+        for folder in (ASSETS, FONTS, MODELS):
             for file in folder.iterdir():
                 if file.is_file():
                     file.unlink(missing_ok=True)
@@ -361,10 +415,22 @@ def capabilities():
         "vision_labels": mac_local,
         "local_visual_search": local_visual_search_available(),
         "similar_images": True,
+        "free_3d": generation_available(),
+        "max_3d_images": 2 if hosting.DEMO else 8,
+        "free_3d_multi": generation_available(multi=True),
+        "min_3d_multi_images": free_3d.MIN_MULTI_PHOTOS,
+        "max_3d_multi_images": free_3d.MAX_MULTI_PHOTOS,
+        "model_import": True,
         "backup_export": True,
         "extension_capture": not hosting.hosted(),
         "sample_board": sample_available(),
     }
+
+
+def generation_available(multi: bool = False) -> bool:
+    if OUTBOUND_BRIDGE.enabled:
+        return OUTBOUND_BRIDGE.connected(multi)
+    return free_3d.multi_worker_available() if multi else free_3d.worker_available()
 
 
 def forget_local_visual_vectors(asset_ids):
@@ -521,10 +587,8 @@ def add_image(payload: dict):
             created = now()
             rel = f"{created[:4]}/{created[5:7]}/{asset_id}.{IMAGE_MIMES[mime]}"
             path = ASSETS / rel
-            source_url = str(payload.get("source_url") or "")[:2048]
-            image_url = str(payload.get("image_url") or "")[:2048]
-            source_url = source_url if urlparse(source_url).scheme in ("http", "https") else ""
-            image_url = image_url if urlparse(image_url).scheme in ("http", "https") else ""
+            source_url = safe_http_url(payload.get("source_url"))
+            image_url = safe_http_url(payload.get("image_url"))
             try:
                 with Image.open(BytesIO(raw)) as decoded:
                     pixel_width, pixel_height = decoded.size
@@ -539,6 +603,10 @@ def add_image(payload: dict):
                       str(payload.get("title") or payload.get("alt") or "")[:500], json.dumps([]), "",
                       int(bool(payload.get("favorite"))), created, pixel_width, pixel_height)
             db.execute("INSERT INTO assets(id,sha256,mime,filename,source_url,image_url,alt,title,tags,collection,favorite,created_at,pixel_width,pixel_height) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", fields)
+            db.execute("UPDATE assets SET source_title=?,source_author=?,source_license=?,source_license_url=? WHERE id=?",
+                       (str(payload.get("source_title") or "")[:500], str(payload.get("source_author") or "")[:200],
+                        str(payload.get("source_license") or "")[:200],
+                        safe_http_url(payload.get("source_license_url")), asset_id))
             asset = row_dict(db.execute("SELECT * FROM assets WHERE id=?", (asset_id,)).fetchone())
         board_id = str(payload.get("board_id") or "main")
         if not db.execute("SELECT 1 FROM boards WHERE id=?", (board_id,)).fetchone():
@@ -649,6 +717,119 @@ def add_image_from_url(payload: dict):
                       "title": title[:500], "board_id": payload.get("board_id"), "position": payload.get("position")})
 
 
+def generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> None:
+    """Serialize bounded CPU batches so separate requests cannot overload the worker."""
+    with MODEL_GENERATION_LOCK:
+        _generate_board_models(jobs)
+
+
+def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> None:
+    for model_id, source_filename, crop in jobs:
+        with LOCK, connection() as db:
+            if not db.execute("SELECT 1 FROM models WHERE id=?", (model_id,)).fetchone():
+                continue
+            db.execute("UPDATE models SET status='running',updated_at=? WHERE id=?", (now(), model_id))
+            db.commit()
+        output = MODELS / f"{model_id}.glb"
+        try:
+            with tempfile.TemporaryDirectory(prefix="visual-brain-3d-source-") as temporary:
+                if isinstance(source_filename, list):
+                    sources = [free_3d.prepared_multi_source(ASSETS / filename,
+                               Path(temporary) / f"photo_{index:03}.jpg")
+                               for index, filename in enumerate(source_filename)]
+                    if OUTBOUND_BRIDGE.enabled:
+                        OUTBOUND_BRIDGE.send_job(model_id, "multi", free_3d.multi_archive(sources))
+                        continue  # the Ryzen worker posts the finished model to the callback
+                    if free_3d.multi_local_available():
+                        free_3d.generate_multi(sources, output)
+                    else:
+                        free_3d.dispatch_remote_multi(model_id, sources)
+                        continue  # the worker posts the finished GLB to the callback route
+                else:
+                    source = free_3d.cropped_source(ASSETS / source_filename, Path(temporary) / "source.jpg", crop)
+                    if OUTBOUND_BRIDGE.enabled:
+                        OUTBOUND_BRIDGE.send_job(model_id, "single", free_3d.remote_image_bytes(source))
+                        continue  # the Ryzen worker posts the finished model to the callback
+                    if free_3d.local_available():
+                        free_3d.generate(source, output)
+                    else:
+                        free_3d.dispatch_remote(model_id, source)
+                        continue  # the worker posts the finished GLB to the callback route
+            status, error = "ready", ""
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+            output.unlink(missing_ok=True)
+            status, error = "failed", str(exc)[:250]
+        with LOCK, connection() as db:
+            if db.execute("SELECT 1 FROM models WHERE id=?", (model_id,)).fetchone():
+                db.execute("UPDATE models SET status=?,error=?,updated_at=? WHERE id=?",
+                           (status, error, now(), model_id))
+                db.commit()
+            else:
+                output.unlink(missing_ok=True)
+
+
+def remove_unused_models(db) -> list[str]:
+    used = {json.loads(row[0]).get("model_id") for row in db.execute("SELECT state FROM items WHERE kind='model'")}
+    unused = [row for row in db.execute("SELECT id,filename FROM models") if row["id"] not in used]
+    for row in unused:
+        db.execute("DELETE FROM models WHERE id=?", (row["id"],))
+    return [row["filename"] for row in unused]
+
+
+def critique_board_for_token(token: str) -> str | None:
+    if not 32 <= len(token) <= 80 or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for char in token):
+        return None
+    with connection() as db:
+        row = db.execute("SELECT board_id FROM critique_invites WHERE token_hash=?",
+                         (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
+        return row["board_id"] if row else None
+
+
+def critique_snapshot(board_id: str, shared: bool = False) -> dict:
+    with connection() as db:
+        board = db.execute("SELECT id,name FROM boards WHERE id=?", (board_id,)).fetchone()
+        if not board:
+            raise ValueError("Board not found")
+        items = [row_dict(row) for row in db.execute("SELECT * FROM items WHERE board_id=? ORDER BY updated_at", (board_id,))]
+        image_ids = {item["asset_id"] for item in items if item["kind"] == "image" and item["asset_id"]}
+        model_ids = {item["state"].get("model_id") for item in items if item["kind"] == "model"}
+        images = [{"id": row["id"], "title": row["title"], "alt": row["alt"]} for row in
+                  db.execute("SELECT id,title,alt FROM assets WHERE trashed_at IS NULL") if row["id"] in image_ids]
+        models = [{"id": row["id"], "status": row["status"], "source_asset_id": row["source_asset_id"]} for row in
+                  db.execute("SELECT id,status,source_asset_id FROM models") if row["id"] in model_ids]
+        comments = [dict(row) for row in db.execute(
+            "SELECT * FROM critique_comments WHERE board_id=? ORDER BY created_at", (board_id,))]
+        invite_active = db.execute("SELECT 1 FROM critique_invites WHERE board_id=?", (board_id,)).fetchone() is not None
+    result = {"board": dict(board), "items": items, "images": images, "models": models, "comments": comments}
+    if not shared:
+        result["invite_active"] = invite_active
+    return result
+
+
+def add_critique_comment(board_id: str, payload: dict) -> dict:
+    item_id = str(payload.get("item_id") or "")
+    author = str(payload.get("author") or "Guest").strip()[:60] or "Guest"
+    body = str(payload.get("body") or "").strip()[:1000]
+    try:
+        x, y = float(payload.get("x")), float(payload.get("y"))
+    except (TypeError, ValueError):
+        raise ValueError("Place the note on an image or model") from None
+    if not body or not all(math.isfinite(value) and 0 <= value <= 1 for value in (x, y)):
+        raise ValueError("Write a note and place it on the object")
+    with LOCK, connection() as db:
+        row = db.execute("SELECT kind FROM items WHERE id=? AND board_id=?", (item_id, board_id)).fetchone()
+        if not row or row["kind"] not in ("image", "model"):
+            raise ValueError("That object is no longer on this board")
+        if db.execute("SELECT COUNT(*) FROM critique_comments WHERE board_id=?", (board_id,)).fetchone()[0] >= 500:
+            raise ValueError("This board has reached its note limit")
+        comment = {"id": "note_" + uuid.uuid4().hex[:12], "board_id": board_id,
+                   "item_id": item_id, "x": x, "y": y, "author": author,
+                   "body": body, "created_at": now(), "resolved_at": None}
+        db.execute("INSERT INTO critique_comments VALUES(?,?,?,?,?,?,?,?,?)", tuple(comment.values()))
+        db.commit()
+    return comment
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "VisualBrain/1.0"
 
@@ -663,6 +844,9 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def log_message(self, fmt, *args):
+        if self.path.startswith(("/critique/", "/api/critique/shared/")):
+            sys.stderr.write("%s private critique request\n" % self.log_date_time_string())
+            return
         sys.stderr.write("%s %s\n" % (self.log_date_time_string(), fmt % args))
 
     def send_bytes(self, body: bytes, mime="application/json", status=200, extra=None):
@@ -671,7 +855,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "private, max-age=3600" if mime.startswith("image/") and not hosting.hosted() else "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'")
         if extra:
             for key, value in extra.items():
                 self.send_header(key, value)
@@ -709,7 +894,8 @@ class Handler(BaseHTTPRequestHandler):
     def private_read_required(self, path):
         if not hosting.hosted() or hosting.DEMO:
             return False
-        public = {"/", "/landing", "/landing.js", "/favicon.svg", "/login", "/healthz"}
+        public = {"/", "/landing", "/landing.js", "/favicon.svg", "/login", "/healthz",
+                  "/vendor/model_viewer/model-viewer.min.js"}
         return path not in public and not path.startswith(("/brand/", "/demo-seed/images/"))
 
     def owner_read_ok(self):
@@ -787,6 +973,41 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path == "/api/3d/worker/socket":
+            return OUTBOUND_BRIDGE.serve(self)
+        parts = path.strip("/").split("/")
+        if len(parts) == 2 and parts[0] == "critique":
+            if not critique_board_for_token(parts[1]):
+                return self.error("This private link is unavailable", 404)
+            return self.send_bytes((ROOT / "critique.html").read_bytes(), "text/html; charset=utf-8")
+        if path in ("/critique.js", "/critique.css"):
+            file = ROOT / path[1:]
+            return self.send_bytes(file.read_bytes(), "text/javascript; charset=utf-8" if path.endswith(".js") else "text/css; charset=utf-8")
+        if len(parts) >= 4 and parts[:3] == ["api", "critique", "shared"]:
+            board_id = critique_board_for_token(parts[3])
+            if not board_id:
+                return self.error("This private link is unavailable", 404)
+            if len(parts) == 4:
+                return self.json(critique_snapshot(board_id, shared=True))
+            if len(parts) == 6 and parts[4] == "assets":
+                asset_id = parts[5]
+                with connection() as db:
+                    row = db.execute("""SELECT assets.filename,assets.mime FROM assets JOIN items ON items.asset_id=assets.id
+                        WHERE items.board_id=? AND assets.id=? AND items.kind='image' AND assets.trashed_at IS NULL LIMIT 1""",
+                        (board_id, asset_id)).fetchone()
+                if not row:
+                    return self.error("Image not on this shared board", 404)
+                return self.send_bytes((ASSETS / row["filename"]).read_bytes(), row["mime"])
+            if len(parts) == 6 and parts[4] == "models":
+                model_id = parts[5]
+                with connection() as db:
+                    used = any(json.loads(row[0]).get("model_id") == model_id for row in db.execute(
+                        "SELECT state FROM items WHERE board_id=? AND kind='model'", (board_id,)))
+                    row = db.execute("SELECT filename,status FROM models WHERE id=?", (model_id,)).fetchone() if used else None
+                if not row or row["status"] != "ready":
+                    return self.error("Model not on this shared board", 404)
+                return self.send_bytes((MODELS / row["filename"]).read_bytes(), "model/gltf-binary")
+            return self.error("Not found", 404)
         # Reachable before sign-in: the platform health check and the front door.
         if path == "/healthz":
             return self.json({"ok": True})
@@ -805,11 +1026,16 @@ class Handler(BaseHTTPRequestHandler):
             if not self.same_origin_ok():
                 return self.error("Forbidden", 403)
             with LOCK, connection() as db:
+                cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat(timespec="seconds")
+                db.execute("UPDATE models SET status='failed',error='The 3D worker did not return a model. Retry to make it again.',updated_at=? WHERE status='running' AND updated_at<?",
+                           (now(), cutoff))
+                db.commit()
                 return self.json({"key": PAIRING_KEY if not hosting.hosted() else "",
                                   "can_edit": not hosting.hosted() or self.owner_read_ok(),
                                   "boards": [row_dict(r) for r in db.execute("SELECT * FROM boards ORDER BY created_at")],
                                   "folders": [row_dict(r) for r in db.execute("SELECT * FROM folders ORDER BY name COLLATE NOCASE")],
                                   "assets": [row_dict(r) for r in db.execute("SELECT * FROM assets WHERE trashed_at IS NULL ORDER BY created_at DESC")],
+                                  "models": [row_dict(r) for r in db.execute("SELECT * FROM models ORDER BY created_at DESC")],
                                   "fonts": [dict(r) for r in db.execute("SELECT * FROM fonts ORDER BY created_at")],
                                   "trash": ([{"id":r["id"], "title":r["title"], "trashed_at":r["trashed_at"]} for r in db.execute("SELECT id,title,trashed_at FROM assets WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC")] if not hosting.hosted() or self.owner_read_ok() else []),
                                   "items": [row_dict(r) for r in db.execute("SELECT * FROM items ORDER BY updated_at")],
@@ -820,6 +1046,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.error("Forbidden", 403)
             with connection() as db:
                 return self.json({"boards": [{"id": r["id"], "name": r["name"]} for r in db.execute("SELECT id,name FROM boards ORDER BY created_at")]})
+        if path.startswith("/api/critique/board/"):
+            if not self.authorized():
+                return self.error("Forbidden", 403)
+            try:
+                return self.json(critique_snapshot(path.rsplit("/", 1)[-1]))
+            except ValueError as error:
+                return self.error(str(error), 404)
+        if path == "/api/taste-map":
+            if not self.authorized():
+                return self.error("Forbidden", 403)
+            return self.json({"groups": visual_features.taste_groups(active_image_records())})
         if path.startswith("/api/fonts/"):
             font_id = path.rsplit("/", 1)[-1]
             with connection() as db:
@@ -848,12 +1085,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.error("Asset not found", 404)
             file = ASSETS / row["filename"]
             return self.send_bytes(file.read_bytes(), row["mime"])
+        if path.startswith("/api/models/"):
+            model_id = path.rsplit("/", 1)[-1]
+            with connection() as db:
+                row = db.execute("SELECT filename,status FROM models WHERE id=?", (model_id,)).fetchone()
+            if not row or row["status"] != "ready":
+                return self.error("Model not ready", 404)
+            file = MODELS / row["filename"]
+            if not file.is_file():
+                return self.error("Model file not found", 404)
+            return self.send_bytes(file.read_bytes(), "model/gltf-binary")
         if path == "/api/export":
             if not self.authorized():
                 return self.error("Forbidden", 403)
             with connection() as db:
                 snapshot = {name: [row_dict(r) for r in db.execute(f"SELECT * FROM {name}")]
-                            for name in ("assets", "boards", "items", "folders", "asset_enrichment", "fonts")}
+                            for name in ("assets", "models", "boards", "items", "folders", "asset_enrichment", "fonts", "critique_comments", "critique_invites")}
             out = BytesIO()
             with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
                 z.writestr("manifest.json", json.dumps(snapshot, indent=2))
@@ -869,8 +1116,12 @@ class Handler(BaseHTTPRequestHandler):
                     z.write(ASSETS / asset["filename"], "assets/" + asset["filename"])
                 for font in snapshot["fonts"]:
                     z.write(FONTS / font["filename"], "fonts/" + font["filename"])
+                for model in snapshot["models"]:
+                    file = MODELS / model["filename"]
+                    if file.is_file():
+                        z.write(file, "models/" + model["filename"])
                 z.writestr("README.txt", "Visual Brain backup. data/visual-brain.sqlite3 holds every record. "
-                           "To restore, stop the server, copy data/visual-brain.sqlite3, assets/ and fonts/ "
+                           "To restore, stop the server, copy data/visual-brain.sqlite3, assets/, models/ and fonts/ "
                            "into the data/ folder of a fresh install, then start it again. "
                            "This ZIP contains your private images. Do not upload it publicly.\n")
             return self.send_bytes(out.getvalue(), "application/zip", extra={"Content-Disposition": "attachment; filename=visual-brain-backup.zip"})
@@ -892,7 +1143,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_bytes(file.read_bytes(), mime, extra={"Cache-Control": "public, max-age=86400"})
         if path == "/landing":
             return self.send_bytes((ROOT / "landing.html").read_bytes(), "text/html; charset=utf-8")
-        if path in ("/", "/board", "/index.html", "/app.js", "/save-as.js", "/style.css", "/glow.css", "/glow.js", "/landing.js", "/favicon.svg"):
+        if path == "/vendor/model_viewer/model-viewer.min.js":
+            return self.send_bytes((ROOT / "vendor/model_viewer/model-viewer.min.js").read_bytes(), "text/javascript; charset=utf-8")
+        if path in ("/", "/board", "/index.html", "/app.js", "/save-as.js", "/style.css", "/glow.css", "/glow.js", "/features.css", "/features.js", "/landing.js", "/favicon.svg"):
             if path == "/":
                 file = ROOT / ("landing.html" if hosting.hosted() else "index.html")
             else:
@@ -901,12 +1154,69 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_bytes(file.read_bytes(), mime)
         return self.error("Not found", 404)
 
+    def handle_3d_callback(self, model_id: str):
+        """Accept a result from the one configured private Ryzen worker."""
+        expected = os.environ.get("VISUAL_BRAIN_3D_REMOTE_TOKEN", "")
+        provided = self.headers.get("X-Visual-Brain-Worker-Token", "")
+        if (not free_3d.MODEL_ID.fullmatch(model_id) or len(expected) < 32
+                or not hmac.compare_digest(provided, expected) or self.headers.get("Origin")):
+            return self.error("Forbidden", 403)
+        try:
+            size = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            return self.error("Invalid result length")
+        if not 1 <= size <= free_3d.MAX_GLB:
+            return self.error("Result is too large")
+        raw = self.rfile.read(size)
+        kind = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if kind == "model/gltf-binary":
+            try:
+                free_3d.validate_glb(raw)
+            except ValueError:
+                return self.error("Worker returned an invalid 3D model")
+            status, error = "ready", ""
+        elif kind == "application/json" and size <= 1024:
+            try:
+                message = json.loads(raw).get("error", "3D generation failed")
+            except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+                return self.error("Invalid worker result")
+            status, error = "failed", str(message)[:250]
+        else:
+            return self.error("Invalid worker result")
+        with LOCK, connection() as db:
+            record = db.execute("SELECT filename,status FROM models WHERE id=?", (model_id,)).fetchone()
+            if not record or record["status"] not in ("running", "queued"):
+                return self.error("Job is no longer active", 409)
+            if status == "ready":
+                destination = MODELS / record["filename"]
+                temporary = MODELS / (model_id + ".incoming")
+                temporary.write_bytes(raw)
+                temporary.replace(destination)
+            db.execute("UPDATE models SET status=?,error=?,updated_at=? WHERE id=?", (status, error, now(), model_id))
+            db.commit()
+        return self.json({"status": status})
+
     def do_POST(self):
         path = urlparse(self.path).path
+        parts = path.strip("/").split("/")
+        if len(parts) == 4 and parts[:3] == ["api", "3d", "callback"]:
+            return self.handle_3d_callback(parts[3])
         if path == "/api/login":
             return self.handle_login()
         if path == "/api/logout":
             return self.handle_logout()
+        if len(parts) == 5 and parts[:3] == ["api", "critique", "shared"] and parts[4] == "comments":
+            board_id = critique_board_for_token(parts[3])
+            if not board_id:
+                return self.error("This private link is unavailable", 404)
+            if not hosting.allowed_origin(self.headers.get("Origin", ""), self.headers.get("Host", "")):
+                return self.error("Forbidden", 403)
+            try:
+                if int(self.headers.get("Content-Length", "0")) > 4096:
+                    raise ValueError("Note is too long")
+                return self.json(add_critique_comment(board_id, self.body()), 201)
+            except (ValueError, json.JSONDecodeError) as error:
+                return self.error(str(error))
         if not self.authorized():
             return self.error("Forbidden", 403)
         try:
@@ -935,6 +1245,185 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(local_visual_search(str(data.get("query") or "")))
             if path == "/api/similar-images":
                 return self.json(local_visual_similarity(str(data.get("asset_id") or "")))
+            if path == "/api/camera-match":
+                encoded = data.get("image_data_url")
+                if not isinstance(encoded, str) or not encoded.startswith("data:image/") or "," not in encoded:
+                    raise ValueError("Choose a camera frame or image")
+                try:
+                    raw = base64.b64decode(encoded.split(",", 1)[1], validate=True)
+                except (ValueError, base64.binascii.Error):
+                    raise ValueError("Invalid camera image") from None
+                if not raw or len(raw) > 8 * 1024 * 1024 or detect_mime(raw) not in IMAGE_MIMES:
+                    raise ValueError("Camera image must be JPEG, PNG or WebP under 8 MB")
+                try:
+                    query = visual_features.byte_features(raw)
+                except OSError:
+                    raise ValueError("Camera image could not be read") from None
+                matches = visual_features.rank(query, active_image_records())
+                with connection() as db:
+                    for match in matches:
+                        match["boards"] = [row["board_id"] for row in db.execute(
+                            "SELECT DISTINCT board_id FROM items WHERE asset_id=? ORDER BY board_id", (match["id"],))]
+                return self.json({"matches": matches, "method": "appearance", "frame_saved": False})
+            if path == "/api/critique/invite":
+                if hosting.DEMO:
+                    return self.error("Private links are unavailable in the public playground", 403)
+                board_id = str(data.get("board_id") or "")
+                token = secrets.token_urlsafe(32)
+                with LOCK, connection() as db:
+                    if not db.execute("SELECT 1 FROM boards WHERE id=?", (board_id,)).fetchone():
+                        raise ValueError("Board not found")
+                    db.execute("INSERT OR REPLACE INTO critique_invites VALUES(?,?,?)",
+                               (board_id, hashlib.sha256(token.encode()).hexdigest(), now()))
+                    db.commit()
+                return self.json({"path": "/critique/" + token, "board_id": board_id}, 201)
+            if path == "/api/critique/comments":
+                board_id = str(data.get("board_id") or "")
+                return self.json(add_critique_comment(board_id, data), 201)
+            if path.startswith("/api/critique/resolve/"):
+                comment_id = path.rsplit("/", 1)[-1]
+                with LOCK, connection() as db:
+                    db.execute("UPDATE critique_comments SET resolved_at=? WHERE id=?", (now(), comment_id))
+                    if not db.total_changes:
+                        return self.error("Note not found", 404)
+                    db.commit()
+                return self.json({"ok": True})
+            if path == "/api/models":
+                encoded = data.get("model_data_url")
+                if not isinstance(encoded, str) or not encoded.startswith("data:") or ";base64," not in encoded:
+                    raise ValueError("Choose a GLB model")
+                try:
+                    raw = base64.b64decode(encoded.split(",", 1)[1], validate=True)
+                except (ValueError, base64.binascii.Error):
+                    raise ValueError("Invalid GLB data") from None
+                if len(raw) > 20 * 1024 * 1024:
+                    raise ValueError("Choose a GLB model under 20 MB")
+                if hosting.DEMO and len(raw) > 5 * 1024 * 1024:
+                    raise ValueError("The public demo accepts GLB models under 5 MB")
+                free_3d.validate_glb(raw)
+                board_id = str(data.get("board_id") or "main")
+                model_id = "model_" + uuid.uuid4().hex[:12]
+                item_id = "item_" + uuid.uuid4().hex[:12]
+                filename = model_id + ".glb"
+                with LOCK, connection() as db:
+                    if not db.execute("SELECT 1 FROM boards WHERE id=?", (board_id,)).fetchone():
+                        raise ValueError("Board not found")
+                    if hosting.DEMO and db.execute("SELECT COUNT(*) FROM models").fetchone()[0] >= 40:
+                        raise ValueError("The public demo has reached its model limit until it resets")
+                    count = db.execute("SELECT COUNT(*) FROM items WHERE board_id=?", (board_id,)).fetchone()[0]
+                    model = {"id": model_id, "filename": filename, "source_asset_id": None,
+                             "status": "ready", "error": "", "created_at": now(), "updated_at": now()}
+                    item = {"id": item_id, "board_id": board_id, "kind": "model", "asset_id": None,
+                            "state": {"x": 80 + count % 4 * 330, "y": 90 + count // 4 * 350,
+                                      "w": 300, "h": 300, "rotation": 0, "z": count + 1,
+                                      "model_id": model_id, "locked": False}}
+                    (MODELS / filename).write_bytes(raw)
+                    db.execute("""INSERT INTO models(id,filename,source_asset_id,status,error,created_at,updated_at)
+                        VALUES(?,?,?,?,?,?,?)""", tuple(model.values()))
+                    db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)",
+                               (item_id, board_id, "model", None, json.dumps(item["state"]), now()))
+                    db.commit()
+                return self.json({"model": model, "item": item}, 201)
+            if path == "/api/3d/boards":
+                grouped = data.get("mode") == "one-object"
+                if data.get("mode") not in (None, "separate", "one-object"):
+                    raise ValueError("Choose a supported 3D mode")
+                if not generation_available(grouped):
+                    return self.error("3D creation is temporarily unavailable. You can still add a 3D model file.", 503)
+                source_board_id = str(data.get("board_id") or "")
+                source_ids = data.get("item_ids")
+                if (not isinstance(source_ids, list) or any(not isinstance(value, str) for value in source_ids)
+                        or len(set(source_ids)) != len(source_ids)):
+                    raise ValueError("Select distinct images from one board")
+                if grouped and not free_3d.MIN_MULTI_PHOTOS <= len(source_ids) <= free_3d.MAX_MULTI_PHOTOS:
+                    raise ValueError(f"Select {free_3d.MIN_MULTI_PHOTOS} to {free_3d.MAX_MULTI_PHOTOS} overlapping photos")
+                if not grouped and not 1 <= len(source_ids) <= 8:
+                    raise ValueError("Select one to eight images")
+                if hosting.DEMO and not grouped and len(source_ids) > 2:
+                    raise ValueError("The public demo makes two 3D objects per board at a time")
+                jobs = []
+                model_count = 1 if grouped else len(source_ids)
+                with LOCK, connection() as db:
+                    if hosting.DEMO:
+                        total = db.execute("SELECT COUNT(*) FROM models").fetchone()[0]
+                        active = db.execute("SELECT COUNT(*) FROM models WHERE status IN ('queued','running')").fetchone()[0]
+                        if total + model_count > 40 or active + model_count > 8:
+                            raise ValueError("The public demo's 3D worker is busy. Try later.")
+                    source_board = db.execute("SELECT name FROM boards WHERE id=?", (source_board_id,)).fetchone()
+                    if not source_board:
+                        raise ValueError("Source board not found")
+                    selected = []
+                    for item_id in source_ids:
+                        image = db.execute("""SELECT items.asset_id,items.state,assets.filename FROM items JOIN assets ON assets.id=items.asset_id
+                            WHERE items.id=? AND items.board_id=? AND items.kind='image' AND assets.trashed_at IS NULL""",
+                            (str(item_id), source_board_id)).fetchone()
+                        if not image:
+                            raise ValueError("Select images from one board")
+                        selected.append((image, free_3d.normalized_crop(json.loads(image["state"]).get("crop"))))
+                    if grouped and len({image["asset_id"] for image, _ in selected}) != len(selected):
+                        raise ValueError("Choose different photos of the same object")
+                    board_id = "board_" + uuid.uuid4().hex[:10]
+                    name = ("3D from " + source_board["name"])[:80]
+                    db.execute("INSERT INTO boards(id,name,view,created_at,updated_at,folder_id) VALUES(?,?,?,?,?,NULL)",
+                               (board_id, name, json.dumps({"x": 0, "y": 0, "zoom": 1}), now(), now()))
+                    if grouped:
+                        model_id = "model_" + uuid.uuid4().hex[:12]
+                        db.execute("""INSERT INTO models(id,filename,source_asset_id,status,error,created_at,updated_at,source_crop,source_asset_ids)
+                            VALUES(?,?,?,?,?,?,?,?,?)""",
+                                   (model_id, model_id + ".glb", selected[0][0]["asset_id"], "queued", "", now(), now(),
+                                    "{}", json.dumps([image["asset_id"] for image, _ in selected])))
+                        model_state = {"x": 50, "y": 70, "w": 620, "h": 520, "rotation": 0,
+                                       "z": 1, "locked": False, "model_id": model_id}
+                        db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)",
+                                   ("item_" + uuid.uuid4().hex[:12], board_id, "model", None, json.dumps(model_state), now()))
+                        jobs.append((model_id, [image["filename"] for image, _ in selected], {}))
+                    for index, (image, crop) in enumerate(selected):
+                        y = 70 + (index // 6) * 150 if grouped else 70 + index * 365
+                        source_state = {"x": 720 + (index % 6) * 145 if grouped else 50, "y": y,
+                                        "w": 135 if grouped else 260, "h": 130 if grouped else 300, "rotation": 0,
+                                        "z": index + 2 if grouped else index * 2 + 1, "locked": False,
+                                        "crop": crop}
+                        db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)",
+                                   ("item_" + uuid.uuid4().hex[:12], board_id, "image", image["asset_id"], json.dumps(source_state), now()))
+                        if grouped:
+                            continue
+                        model_id = "model_" + uuid.uuid4().hex[:12]
+                        db.execute("""INSERT INTO models(id,filename,source_asset_id,status,error,created_at,updated_at,source_crop)
+                            VALUES(?,?,?,?,?,?,?,?)""",
+                                   (model_id, model_id + ".glb", image["asset_id"], "queued", "", now(), now(), json.dumps(crop)))
+                        model_state = {"x": 355, "y": y, "w": 320, "h": 300, "rotation": 0,
+                                       "z": index * 2 + 2, "locked": False, "model_id": model_id}
+                        db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)",
+                                   ("item_" + uuid.uuid4().hex[:12], board_id, "model", None, json.dumps(model_state), now()))
+                        jobs.append((model_id, image["filename"], crop))
+                    db.commit()
+                threading.Thread(target=generate_board_models, args=(jobs,), daemon=True).start()
+                return self.json({"board_id": board_id, "queued": len(jobs)}, 201)
+            if path.startswith("/api/models/") and path.endswith("/retry"):
+                model_id = path.split("/")[-2]
+                with LOCK, connection() as db:
+                    model = db.execute("""SELECT models.source_asset_id,models.source_asset_ids,models.source_crop,assets.filename FROM models
+                        JOIN assets ON assets.id=models.source_asset_id WHERE models.id=? AND models.status='failed'""",
+                        (model_id,)).fetchone()
+                    if not model:
+                        return self.error("Model cannot be retried", 404)
+                    source_ids = json.loads(model["source_asset_ids"] or "[]")
+                    grouped = len(source_ids) > 1
+                    if not generation_available(grouped):
+                        return self.error("Free 3D generation is not installed here", 503)
+                    if grouped:
+                        assets = [db.execute("SELECT filename FROM assets WHERE id=? AND trashed_at IS NULL", (asset_id,)).fetchone()
+                                  for asset_id in source_ids]
+                        if any(asset is None for asset in assets):
+                            return self.error("Restore the source photos before retrying", 409)
+                        sources = [asset["filename"] for asset in assets]
+                    else:
+                        sources = model["filename"]
+                    db.execute("UPDATE models SET status='queued',error='',updated_at=? WHERE id=?", (now(), model_id))
+                    db.commit()
+                crop = json.loads(model["source_crop"] or "{}")
+                threading.Thread(target=generate_board_models, args=([(model_id, sources, crop)],), daemon=True).start()
+                return self.json({"status": "queued"})
             if path.startswith("/api/assets/") and path.endswith("/restore"):
                 asset_id = path.split("/")[-2]
                 with LOCK, connection() as db:
@@ -980,7 +1469,7 @@ class Handler(BaseHTTPRequestHandler):
                 item_id = "item_" + uuid.uuid4().hex[:12]
                 board_id = str(data.get("board_id") or "main")
                 kind = str(data.get("kind") or "text")
-                if kind not in ("text", "frame", "drawing", "image", "shape"):
+                if kind not in ("text", "frame", "drawing", "image", "shape", "model"):
                     raise ValueError("Unsupported item type")
                 state = data.get("state") or {}
                 if not isinstance(state, dict):
@@ -991,6 +1480,8 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError("Board not found")
                     if asset_id and not db.execute("SELECT 1 FROM assets WHERE id=?", (asset_id,)).fetchone():
                         raise ValueError("Asset not found")
+                    if kind == "model" and not db.execute("SELECT 1 FROM models WHERE id=?", (str(state.get("model_id") or ""),)).fetchone():
+                        raise ValueError("Model not found")
                     db.execute("INSERT INTO items VALUES(?,?,?,?,?,?)", (item_id, board_id, kind, asset_id, json.dumps(state), now()))
                     db.commit()
                 return self.json({"id": item_id, "board_id": board_id, "kind": kind, "asset_id": asset_id, "state": state}, 201)
@@ -1019,6 +1510,14 @@ class Handler(BaseHTTPRequestHandler):
                     db.execute("UPDATE assets SET tags=?,collection=?,favorite=?,title=? WHERE id=?",
                                (json.dumps([str(t)[:40] for t in tags[:30]]), str(data.get("collection") or "")[:100],
                                 int(bool(data.get("favorite"))), str(data.get("title") or "")[:500], asset_id))
+                    if "source" in data:
+                        source = data["source"]
+                        if not isinstance(source, dict):
+                            raise ValueError("Invalid source details")
+                        db.execute("UPDATE assets SET source_url=?,source_title=?,source_author=?,source_license=?,source_license_url=? WHERE id=?",
+                                   (safe_http_url(source.get("url")), str(source.get("title") or "")[:500],
+                                    str(source.get("author") or "")[:200], str(source.get("license") or "")[:200],
+                                    safe_http_url(source.get("license_url")), asset_id))
                 elif path.startswith("/api/boards/"):
                     board_id = path.rsplit("/", 1)[-1]
                     if "name" in data or "folder_id" in data:
@@ -1060,6 +1559,12 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return self.error("Forbidden", 403)
         path = urlparse(self.path).path
+        if path.startswith("/api/critique/invite/"):
+            board_id = path.rsplit("/", 1)[-1]
+            with LOCK, connection() as db:
+                db.execute("DELETE FROM critique_invites WHERE board_id=?", (board_id,))
+                db.commit()
+            return self.json({"ok": True})
         if path == "/api/trash":
             with LOCK, connection() as db:
                 records = db.execute("SELECT id,filename FROM assets WHERE trashed_at IS NOT NULL").fetchall()
@@ -1069,6 +1574,7 @@ class Handler(BaseHTTPRequestHandler):
             for record in records:
                 (ASSETS / record["filename"]).unlink(missing_ok=True)
             return self.json({"deleted":len(records)})
+        removed_models = []
         with LOCK, connection() as db:
             if path.startswith("/api/items/"):
                 db.execute("DELETE FROM items WHERE id=?", (path.rsplit("/", 1)[-1],))
@@ -1084,6 +1590,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not db.execute("SELECT 1 FROM boards WHERE id=?",(board_id,)).fetchone():
                     return self.error("Board not found",404)
                 db.execute("DELETE FROM items WHERE board_id=?", (board_id,))
+                db.execute("DELETE FROM critique_comments WHERE board_id=?", (board_id,))
+                db.execute("DELETE FROM critique_invites WHERE board_id=?", (board_id,))
                 db.execute("DELETE FROM boards WHERE id=?", (board_id,))
             elif path.startswith("/api/folders/"):
                 folder_id = path.rsplit("/",1)[-1]
@@ -1091,7 +1599,10 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("DELETE FROM folders WHERE id=?",(folder_id,))
             else:
                 return self.error("Not found", 404)
+            removed_models = remove_unused_models(db)
             db.commit()
+        for filename in removed_models:
+            (MODELS / filename).unlink(missing_ok=True)
         return self.json({"ok": True})
 
 

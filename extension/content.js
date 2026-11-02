@@ -182,13 +182,24 @@
     return right-x >= 8 && bottom-y >= 8 ? {x,y,w:right-x,h:bottom-y,viewport_w:innerWidth,viewport_h:innerHeight} : null;
   }
 
+  function pageSourceDetails() {
+    const meta = selector => document.querySelector(selector)?.getAttribute("content")?.trim() || "";
+    const licenseLink = document.querySelector('link[rel~="license"][href]')?.href || "";
+    return {
+      source_title: meta('meta[property="og:title"]') || document.title || "",
+      source_author: meta('meta[name="author"]') || meta('meta[property="article:author"]') || meta('meta[name="dc.creator"]'),
+      source_license: meta('meta[name="license"]') || meta('meta[name="dc.rights"]'),
+      source_license_url: licenseLink
+    };
+  }
+
   function buildVisualCapture(visual) {
     const element=visual.element;
     let capture;
     if (visual.kind === "image") capture=buildCapture(element);
     else {
       const title=element.getAttribute("title") || element.getAttribute("aria-label") || element.closest("a[title]")?.getAttribute("title") || "";
-      capture={source_url:location.href,image_url:visual.url || "",image_candidates:visual.url ? [visual.url] : [],alt:title,title:title||document.title||""};
+      capture={source_url:location.href,image_url:visual.url || "",image_candidates:visual.url ? [visual.url] : [],alt:title,title:title||document.title||"",...pageSourceDetails()};
       if (visual.kind === "canvas") { try { capture.image_data_url=element.toDataURL("image/png"); } catch { /* Tainted canvas uses the visible clip fallback. */ } }
     }
     capture.screen_crop=screenCrop(element);
@@ -256,7 +267,8 @@
       image_url: best,
       image_candidates: imageCandidates,
       alt,
-      title: title || alt || document.title || ""
+      title: title || alt || document.title || "",
+      ...pageSourceDetails()
     };
     const dataImage = image.currentSrc || image.src || "";
     if (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(dataImage)) result.image_data_url=dataImage;

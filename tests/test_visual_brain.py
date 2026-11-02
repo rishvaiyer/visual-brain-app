@@ -113,8 +113,10 @@ with tempfile.TemporaryDirectory() as temp:
             assert "data/visual-brain.sqlite3" in z.namelist()
             assert z.read("assets/" + first["asset"]["filename"]) == image_bytes
         font_path = Path("/System/Library/Fonts/Geneva.ttf")
+        if not font_path.is_file():
+            font_path = ROOT / "fonts/generated/Kalam Bold.ttf"
         font_bytes = font_path.read_bytes()
-        font_payload = {"name": "Geneva.ttf", "font_data_url": "data:font/ttf;base64," + base64.b64encode(font_bytes).decode()}
+        font_payload = {"name": font_path.name, "font_data_url": "data:font/ttf;base64," + base64.b64encode(font_bytes).decode()}
         font_response = requests.post(URL + "/api/fonts", json=font_payload, headers=headers)
         assert font_response.status_code == 201, font_response.text
         saved_font = font_response.json()

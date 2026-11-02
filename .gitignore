@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 *.zip
 .claude/
+.local-3d-worker/
+.runs/
+.tools/
+.evidence/

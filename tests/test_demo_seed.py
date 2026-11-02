@@ -97,7 +97,7 @@ else:
 # 3. A copy that ships without the pictures (the public repo does) still starts, empty.
 with tempfile.TemporaryDirectory() as bare:
     bare = Path(bare)
-    for name in ("server.py", "hosting.py", "enrichment.py", "vision_labels.swift"):
+    for name in ("server.py", "hosting.py", "enrichment.py", "visual_features.py", "free_3d.py", "vision_labels.swift"):
         if (ROOT / name).exists():
             shutil.copy(ROOT / name, bare / name)
     (bare / "demo-seed").mkdir()
