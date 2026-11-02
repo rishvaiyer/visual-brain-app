@@ -27,6 +27,21 @@ Needs Python 3.10 or newer. No database server, no accounts, no cloud.
 - **Export.** Save a board as a PNG, or everything as a ZIP backup you can restore from.
 - **Sample boards.** An empty library offers six ready-made boards to try the app on, and the public playground opens on them. Double-click any picture to see it large. See `demo-seed/NOTICE.md` for where the pictures come from.
 - **Image content search (optional, Apple Silicon).** Double-click `Install Local Visual Search.command` once to download a local CLIP model. Then search by what is in the picture, fully offline.
+- **3D boards and room placement.** Select up to eight images and choose **Go to 3D** to make a new board with one rotatable object per image. With the optional Ryzen multi-photo worker, upload and select 32–80 overlapping angles of one still object, then choose **One 3D object from these angles** for a single combined model. Save the current angle as an image or download the model. You can also import a self-contained GLB file. Enter an object's real height to place it at scale in a compatible phone's room view.
+- **Walk this board.** Move through the board's saved images, models, text, and frames with the arrow keys or buttons.
+- **Point & reopen.** Compare a camera frame or photo with saved images and jump to visually similar boards. The frame is not saved.
+- **Source trail and taste map.** Keep an image's page, maker, and license details; see visual groups across the library.
+- **Private critique.** Pin comments to exact spots on images and models. On a private hosted board, create a board-only review link and revoke it when done.
+
+### Free photo-to-3D worker
+
+Photo-to-3D generation runs on your own Linux CPU using [TripoSR](https://github.com/VAST-AI-Research/TripoSR). On the Ryzen, run `bash tools/setup_3d_cpu.sh` once. It downloads the open model and checks a sample before enabling **Go to 3D**. A clean object photo works best; one selected photo makes one model. Generation can take a while, so use **Check result** on the new board. Importing a GLB file does not need the worker.
+
+For one model from many angles, run `bash tools/setup_3d_multi_cpu.sh` on the Ryzen after the single-photo setup. The script uses a locally available [OpenMVS](https://github.com/cdcseacave/openMVS) binary or downloads and checks the [official v2.4 Ubuntu release](https://github.com/cdcseacave/openMVS/releases/tag/v2.4.0); set `VISUAL_BRAIN_OPENMVS_SOURCE_BIN` to use a different local binary folder. It installs [PyCOLMAP](https://github.com/colmap/colmap) and a foreground remover in a separate Python environment. This path works best with a full circle of overlapping photos of a still object, including higher and lower angles; photos with missing sides or weak overlap are rejected. It runs on a CPU, so expect minutes rather than seconds.
+
+To check the complete private dispatch and return path before connecting a hosted site, set `VISUAL_BRAIN_3D_WORKER_DIR` to the installed Ryzen worker folder and run `python3 tools/smoke_3d_multi_cpu.py /path/to/jpeg-orbit /path/to/result.glb --remote-loopback`. The temporary board and worker stay on loopback; the result GLB is saved at the chosen output path.
+
+The normal hosted container includes the viewer and GLB import, but does not install the large CPU worker. For the free Ryzen worker, run `free_3d_worker.py` on Ryzen with `VISUAL_BRAIN_WORKER_TOKEN_FILE` pointing to a protected credential and `VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN` set to the hosted site. Set `VISUAL_BRAIN_3D_OUTBOUND=1` and the matching `VISUAL_BRAIN_3D_REMOTE_TOKEN` as private hosted-service variables. Run `free_3d_outbound.py` on Ryzen with the same credential, callback origin, and loopback worker port. It opens one authenticated WebSocket to the hosted site and forwards source photos to the loopback worker; the worker sends completed models through the protected callback. No inbound route or paid worker is needed. Keep token values out of source and logs. Room placement needs a compatible phone and a secure site address.
 
 ## Browser extension
 
@@ -54,12 +69,16 @@ It refuses to listen on a public address unless you choose one of two modes:
 - **Private board:** set `VISUAL_BRAIN_HOST=0.0.0.0`, `VISUAL_BRAIN_PASSPHRASE=<something long>`, and `VISUAL_BRAIN_PUBLIC_ORIGIN=https://your-domain` (Railway sets the origin for you). The landing page is public; the board asks for the passphrase.
 - **Public demo:** set `VISUAL_BRAIN_HOST=0.0.0.0` and `VISUAL_BRAIN_DEMO=1`. Anyone can edit, images are capped at 8 MB and 400 total, and all data is wiped every `VISUAL_BRAIN_DEMO_RESET_HOURS` hours (default 6). The browser extension does not pair with hosted instances.
 
+The public demo limits photo-to-3D requests to two images at a time and a bounded queue, so one visitor cannot occupy the free worker indefinitely.
+
 ## Development
 
 ```sh
 python3 tests/test_visual_brain.py          # end-to-end smoke test against a real server
 python3 -m unittest tests/test_hosted_security.py
 python3 -m unittest tests/test_enrichment.py tests/test_inspo_fonts.py
+python3 tests/test_free_features_e2e.py # free feature flows over HTTP
+python3 tests/test_remote_3d_bridge.py  # private worker dispatch and callback
 python3 tests/test_demo_seed.py             # sample boards: seeding, routes, a copy without pictures
 node tests/test_extension_menu.js && node tests/test_extension_targets.js && node tests/test_extension_fallback.js
 ```
@@ -68,4 +87,4 @@ Plain Python standard library HTTP server, SQLite, vanilla JavaScript. Two depen
 
 ## License
 
-MIT. Bundled fonts keep their own open licenses in `fonts/licenses/`; `vendor/mlx_clip` is MIT from Apple.
+MIT. Bundled fonts keep their own open licenses in `fonts/licenses/`; `vendor/mlx_clip` is MIT from Apple; the bundled model viewer is Apache-2.0 with its license in `vendor/model_viewer/`.
