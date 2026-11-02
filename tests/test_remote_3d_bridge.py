@@ -57,6 +57,12 @@ class RemoteBridgeHTTP(unittest.TestCase):
                 self.assertEqual(worker.load_worker_token(), "from-file-token")
                 credential.unlink()
                 self.assertEqual(worker.load_worker_token(), "")
+            credential.write_text("systemd-token\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"CREDENTIALS_DIRECTORY": temporary,
+                                              "VISUAL_BRAIN_WORKER_TOKEN": "environment-token"}):
+                with mock.patch.dict(os.environ, {"VISUAL_BRAIN_WORKER_TOKEN_FILE": ""}):
+                    (Path(temporary) / "worker-token").write_text("systemd-token\n", encoding="utf-8")
+                    self.assertEqual(worker.load_worker_token(), "systemd-token")
 
     def test_multi_photo_failure_keeps_guidance_and_hides_trace(self):
         import free_3d

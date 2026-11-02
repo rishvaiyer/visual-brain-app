@@ -32,6 +32,8 @@ PORT = int(os.environ.get("VISUAL_BRAIN_WORKER_PORT", "8788"))
 
 def load_worker_token() -> str:
     credential = os.environ.get("VISUAL_BRAIN_WORKER_TOKEN_FILE")
+    if not credential and os.environ.get("CREDENTIALS_DIRECTORY"):
+        credential = str(Path(os.environ["CREDENTIALS_DIRECTORY"]) / "worker-token")
     if credential:
         try:
             return Path(credential).read_text(encoding="utf-8").strip()
