@@ -183,12 +183,7 @@ def dispatch_remote(model_id: str, source: Path) -> None:
     """Send one reduced source image; the Ryzen worker calls back with the GLB."""
     if not remote_available() or not MODEL_ID.fullmatch(model_id):
         raise RuntimeError("The private 3D worker is not configured")
-    with Image.open(source) as image:
-        image = ImageOps.exif_transpose(image)
-        image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-        image = image.convert("RGB")
-        output = BytesIO()
-        image.save(output, format="JPEG", quality=90, optimize=True)
+    raw = remote_image_bytes(source)
     headers = {"Content-Type": "image/jpeg", "X-Visual-Brain-Worker-Token": os.environ["VISUAL_BRAIN_3D_REMOTE_TOKEN"],
                "X-Visual-Brain-Model-Id": model_id}
     if os.environ.get("VISUAL_BRAIN_3D_CF_CLIENT_ID"):
@@ -196,11 +191,21 @@ def dispatch_remote(model_id: str, source: Path) -> None:
         headers["CF-Access-Client-Secret"] = os.environ["VISUAL_BRAIN_3D_CF_CLIENT_SECRET"]
     try:
         response = requests.post(os.environ["VISUAL_BRAIN_3D_REMOTE_ORIGIN"].rstrip("/") + "/jobs",
-                                 data=output.getvalue(), headers=headers, timeout=(5, 25), allow_redirects=False)
+                                 data=raw, headers=headers, timeout=(5, 25), allow_redirects=False)
     except requests.RequestException as error:
         raise RuntimeError("The private 3D worker could not be reached") from error
     if response.status_code != 202:
         raise RuntimeError(f"The private 3D worker refused this image ({response.status_code})")
+
+
+def remote_image_bytes(source: Path) -> bytes:
+    """Reduce one selected image to the private worker's JPEG input."""
+    with Image.open(source) as image:
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+        output = BytesIO()
+        image.convert("RGB").save(output, format="JPEG", quality=90, optimize=True)
+    return output.getvalue()
 
 
 def validate_glb(raw: bytes) -> None:
