@@ -165,7 +165,11 @@ async function performCapture(input, authoritativePageUrl, boardId = null, conte
     source_url: pageUrl,
     image_url: candidates[0] || "",
     alt: cleanText(input?.alt, 2_000),
-    title: cleanText(input?.title || input?.alt || context.tab?.title, 500)
+    title: cleanText(input?.title || input?.alt || context.tab?.title, 500),
+    source_title: cleanText(input?.source_title || context.tab?.title, 500),
+    source_author: cleanText(input?.source_author, 200),
+    source_license: cleanText(input?.source_license, 200),
+    source_license_url: isHttpUrl(input?.source_license_url) ? input.source_license_url : ""
   };
   if (settings.favorite === true) capture.favorite = true;
   if (boardId) capture.board_id = boardId;

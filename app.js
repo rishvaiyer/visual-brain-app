@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const state = { key: "", canEdit: false, capabilities: {}, boards: [], folders: [], assets: [], fonts: [], items: [], trash: [], boardId: "main", selected: new Set(), tool: "select", drag: null, space: false, saveTimers: new Map(), libraryLimit: 80, trashLimit: 50, favoritesOnly: false, closedFolders: new Set(), visualQuery: "", semanticIds: new Set(), semanticAvailable: false, semanticPending: false, semanticChecked: false, semanticError: "", localVisualAvailable: false, localVisualMatches: null, localVisualPending: false, localVisualError: "", localVisualImageId: "", localVisualMethod: "" };
+const state = { key: "", canEdit: false, capabilities: {}, boards: [], folders: [], assets: [], models: [], fonts: [], items: [], trash: [], boardId: "main", selected: new Set(), tool: "select", drag: null, space: false, saveTimers: new Map(), libraryLimit: 80, trashLimit: 50, favoritesOnly: false, closedFolders: new Set(), visualQuery: "", semanticIds: new Set(), semanticAvailable: false, semanticPending: false, semanticChecked: false, semanticError: "", localVisualAvailable: false, localVisualMatches: null, localVisualPending: false, localVisualError: "", localVisualImageId: "", localVisualMethod: "" };
 try { state.closedFolders = new Set(JSON.parse(localStorage.getItem("visual-brain-closed-folders") || "[]")); } catch {}
 const viewport = $("#viewport"), stage = $("#stage");
 const toastEl = $("#toast");
@@ -17,6 +17,7 @@ async function request(path, method = "GET", body) {
 function currentBoard() { return state.boards.find(b => b.id === state.boardId) || state.boards[0]; }
 function currentItems() { return state.items.filter(i => i.board_id === state.boardId); }
 function asset(id) { return state.assets.find(a => a.id === id); }
+function model(id) { return state.models.find(entry => entry.id === id); }
 function item(id) { return state.items.find(i => i.id === id); }
 function view() { return currentBoard().view; }
 const loadedFontIds = new Set();
@@ -143,6 +144,17 @@ function renderTrash() {
 function imageMarkup(i) {
   return `<div class="image-clip"><img src="/api/assets/${i.asset_id}" alt="${esc(assetDisplayLabel(asset(i.asset_id)))}" draggable="false"></div>`;
 }
+let modelViewerPromise;
+function ensureModelViewer() {
+  modelViewerPromise ||= import("/vendor/model_viewer/model-viewer.min.js").catch(error => {modelViewerPromise=null;toast("3D viewer could not load");throw error;});
+  return modelViewerPromise;
+}
+function modelMarkup(i) {
+  const entry=model(i.state.model_id), source=entry?.source_asset_id;
+  if(entry?.status==="ready") return `<div class="model-item-head"><span>3D object</span><button type="button" data-open-model="${esc(entry.id)}">Open large</button></div><model-viewer src="/api/models/${encodeURIComponent(entry.id)}" camera-controls shadow-intensity=".8" alt="Rotatable 3D object"></model-viewer>`;
+  const status=entry?.status==="failed" ? "Could not make this model" : entry?.status==="running" ? "Making 3D object…" : "Waiting to make 3D object…";
+  return `<div class="model-item-head"><span>3D object</span><button type="button" data-refresh-models>Check result</button></div><div class="model-pending">${source ? `<img src="/api/assets/${encodeURIComponent(source)}" alt="Source image">` : ""}<strong>${status}</strong>${entry?.error ? `<small>${esc(entry.error)}</small>` : ""}${entry?.status==="failed" && state.canEdit ? `<button type="button" data-retry-model="${esc(entry.id)}">Retry</button>` : ""}</div>`;
+}
 function safeColor(value, fallback) { return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback; }
 function shapeMarkup(s) {
   const w = Math.max(1, s.w), h = Math.max(1, s.h), fill = safeColor(s.fill, "#c8d4bb"), stroke = safeColor(s.stroke, "#4d684f"), line = Math.max(1, Math.min(30, Number(s.strokeWidth) || 2));
@@ -164,7 +176,7 @@ function fitCroppedImage(el) {
 }
 function itemMarkup(i) {
   const s = i.state, selected = state.selected.has(i.id);
-  const shape = i.kind === "image" ? imageMarkup(i) : i.kind === "text" ? esc(s.text || "Text") : i.kind === "frame" ? esc(s.text || "Frame") : i.kind === "shape" ? shapeMarkup(s) : `<svg viewBox="0 0 ${Math.max(1,s.w)} ${Math.max(1,s.h)}" preserveAspectRatio="none"><polyline points="${(s.points||[]).map(p=>`${p[0]},${p[1]}`).join(" ")}" fill="none" stroke="${esc(s.color || "#333b30")}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const shape = i.kind === "image" ? imageMarkup(i) : i.kind === "model" ? modelMarkup(i) : i.kind === "text" ? esc(s.text || "Text") : i.kind === "frame" ? esc(s.text || "Frame") : i.kind === "shape" ? shapeMarkup(s) : `<svg viewBox="0 0 ${Math.max(1,s.w)} ${Math.max(1,s.h)}" preserveAspectRatio="none"><polyline points="${(s.points||[]).map(p=>`${p[0]},${p[1]}`).join(" ")}" fill="none" stroke="${esc(s.color || "#333b30")}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   return `<div class="item ${i.kind} ${selected ? "selected" : ""} ${s.locked ? "locked" : ""}" data-item="${i.id}"${i.kind === "image" ? ` data-title="${esc(asset(i.asset_id)?.title || "")}"` : ""} style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px;transform:rotate(${s.rotation || 0}deg);z-index:${s.z || 1}">${shape}${selected && !s.locked ? '<div class="resize-handle" data-handle="resize"></div>' : ''}</div>`;
 }
 function renderCanvas() {
@@ -179,6 +191,11 @@ function renderCanvas() {
   stage.innerHTML = currentItems().map(itemMarkup).join("");
   stage.querySelectorAll(".item.text").forEach(el => { const s = item(el.dataset.item).state; Object.assign(el.style, {fontFamily: s.fontFamily || "Avenir Next, sans-serif", fontSize: `${Math.max(8, Math.min(200, Number(s.fontSize) || 22))}px`, fontWeight: s.fontWeight || "400", textAlign: s.textAlign || "left", color: safeColor(s.color, "#30382f")}); });
   stage.querySelectorAll(".item.image").forEach(el => { const img=el.querySelector("img"); if(img.complete) fitCroppedImage(el); else img.onload=()=>fitCroppedImage(el); });
+  if(stage.querySelector("model-viewer")) ensureModelViewer();
+  stage.querySelectorAll(".item.model model-viewer,.item.model button").forEach(el=>el.addEventListener("pointerdown",event=>event.stopPropagation()));
+  stage.querySelectorAll("[data-open-model]").forEach(button=>button.addEventListener("click",()=>window.openModelDetail?.(button.dataset.openModel)));
+  stage.querySelectorAll("[data-refresh-models]").forEach(button=>button.addEventListener("click",()=>refreshData().catch(error=>toast(error.message))));
+  stage.querySelectorAll("[data-retry-model]").forEach(button=>button.addEventListener("click",async()=>{try{await request(`/api/models/${button.dataset.retryModel}/retry`,"POST",{});await refreshData();toast("Making this 3D object again");}catch(error){toast(error.message);}}));
   $("#empty").hidden = currentItems().length > 0;
   $("#empty-sample").hidden = !(state.capabilities?.sample_board && state.canEdit && !state.assets.length);
   if (v.autofit && viewport.clientWidth > 0) { const mode = v.autofit; delete v.autofit; return fitContent({ width: mode === "width" }); }  // sample boards open composed, on any screen size
@@ -195,7 +212,19 @@ function renderInspector() {
   $("#inspector").classList.toggle("has-selection", !!ids.length);
   $("#app").classList.toggle("inspector-open", !!ids.length);
   if (!ids.length) { body.innerHTML = '<p class="muted">Select an image or object on the board.</p>'; return; }
-  if (ids.length > 1) { body.innerHTML = `<p class="selection-count">${ids.length} objects selected</p><div class="action-row"><button data-action="group">Group</button><button data-action="delete-many" class="danger">Delete from board</button></div>`; wireActions(); return; }
+  if (ids.length > 1) {
+    const images = ids.map(item).filter(entry => entry?.kind === "image").length;
+    const separateLimit = Number(state.capabilities.max_3d_images) || 8;
+    const multiMinimum = Number(state.capabilities.min_3d_multi_images) || 32;
+    const multiLimit = Number(state.capabilities.max_3d_multi_images) || 80;
+    const separateAction = images && images <= separateLimit ? `<button data-action="go-3d">Go to 3D (${images})</button>` : "";
+    const oneObjectAction = images >= multiMinimum && images <= multiLimit && state.capabilities.free_3d_multi
+      ? '<button data-action="one-3d-object">One 3D object from these angles</button>' : "";
+    const hint = images > separateLimit && state.capabilities.free_3d_multi && !oneObjectAction
+      ? `<p class="muted">${images > multiLimit ? `Choose up to ${multiLimit} angles for one object.` : `Select up to ${separateLimit} for separate objects, or at least ${multiMinimum} angles for one object.`}</p>` : "";
+    body.innerHTML = `<p class="selection-count">${ids.length} objects selected</p><div class="action-row">${separateAction}${oneObjectAction}<button data-action="group">Group</button><button data-action="delete-many" class="danger">Delete from board</button></div>${hint}`;
+    wireActions(); return;
+  }
   const i = item(ids[0]);
   if (!i) { state.selected.clear(); return renderInspector(); }
   const s = i.state, a = i.asset_id ? asset(i.asset_id) : null;
@@ -208,7 +237,9 @@ function renderInspector() {
     return;
   }
   let html = a ? `<img class="detail-image" src="/api/assets/${a.id}" alt="${esc(a.alt || "Selected image")}" draggable="true" title="Drag into a Finder folder to copy the original"><div class="image-save-row"><button id="save-original" type="button">Save original as…</button><span>or drag the image into Finder</span></div>` : "";
-  if (a) html += `${a.credit ? `<p class="credit">${esc(a.credit)}</p>` : ""}${a.pixel_width ? `<p class="muted">Original: ${a.pixel_width} × ${a.pixel_height} px</p>` : ""}${field("Title", "asset-title", a.title || "", {placeholder:assetDisplayLabel(a)})}${field("Collection", "asset-collection", a.collection || "")}${field("Tags (comma separated)", "asset-tags", (a.tags || []).join(", "))}${a.auto_tags?.length ? `<p class="muted">Image labels: ${esc(a.auto_tags.join(" · "))}</p>` : ""}<label class="field"><input id="asset-favorite" type="checkbox" ${a.favorite ? "checked" : ""}> Favorite</label>${a.source_url ? `<a class="source-link" href="${esc(a.source_url)}" target="_blank" rel="noopener noreferrer">Open source page ↗</a>` : ""}<div class="detail-section"><h3>Find related images</h3><div class="action-row"><button data-action="find-similar" type="button">Find similar images</button></div></div>`;
+  if (a) html += `${a.credit ? `<p class="credit">${esc(a.credit)}</p>` : ""}${a.pixel_width ? `<p class="muted">Original: ${a.pixel_width} × ${a.pixel_height} px</p>` : ""}${field("Title", "asset-title", a.title || "", {placeholder:assetDisplayLabel(a)})}${field("Collection", "asset-collection", a.collection || "")}${field("Tags (comma separated)", "asset-tags", (a.tags || []).join(", "))}${a.auto_tags?.length ? `<p class="muted">Image labels: ${esc(a.auto_tags.join(" · "))}</p>` : ""}<label class="field"><input id="asset-favorite" type="checkbox" ${a.favorite ? "checked" : ""}> Favorite</label><div class="detail-section"><h3>Source trail</h3><p class="muted">${esc(a.source_author || a.source_title || (a.source_url ? "Original page saved" : "No source saved"))}</p><div class="action-row"><button data-action="source-trail" type="button">View source details</button></div></div><div class="detail-section"><h3>Find related images</h3><div class="action-row"><button data-action="find-similar" type="button">Find similar images</button></div></div>`;
+  if (a) html += `<div class="detail-section"><h3>3D</h3><div class="action-row"><button data-action="go-3d" type="button">Go to 3D</button></div><p class="muted">Makes a new board with this picture and a rotatable 3D object.</p></div>`;
+  if (i.kind === "model") { const entry=model(s.model_id);html += `<div class="detail-section"><h3>3D object</h3><p class="muted">${entry?.status==="ready" ? "Ready to rotate or place in a room." : entry?.status==="failed" ? esc(entry.error||"Generation failed") : "Generation is in progress."}</p><div class="action-row">${entry?.status==="ready" ? '<button data-action="open-model" type="button">Open 3D</button>' : '<button data-action="refresh-model" type="button">Check result</button>'}</div></div>`; }
   if (i.kind === "text" || i.kind === "frame") html += `<label class="field">Text<textarea id="item-text">${esc(s.text || "")}</textarea></label>`;
   if (i.kind === "text") {
     const fonts=["Avenir Next, sans-serif","Helvetica Neue, sans-serif","Georgia, serif","Baskerville, serif","Menlo, monospace"];
@@ -246,6 +277,11 @@ async function performAction(action) {
   if (!chosen.length) return;
   try {
     if (action === "find-similar") { findSimilarImages(chosen[0].asset_id); return; }
+    if (action === "source-trail") { openAssetDialog(chosen[0].asset_id); $("#asset-source-details").open = true; return; }
+    if (action === "go-3d") { await window.create3DBoard?.(chosen.filter(entry=>entry.kind==="image").map(entry=>entry.id)); return; }
+    if (action === "one-3d-object") { await window.create3DBoard?.(chosen.filter(entry=>entry.kind==="image").map(entry=>entry.id), "one-object"); return; }
+    if (action === "open-model") { window.openModelDetail?.(chosen[0].state.model_id); return; }
+    if (action === "refresh-model") { await refreshData(); return; }
     if (action === "delete" || action === "delete-many") { for (const i of chosen) { clearTimeout(state.saveTimers.get(i.id)); await request(`/api/items/${i.id}`, "DELETE"); state.items = state.items.filter(x=>x.id !== i.id); } state.selected.clear(); toast(`${chosen.length} removed from board. Saved images remain in Library.`); }
     else if (action === "trash-asset") { const i=chosen[0], a=asset(i.asset_id); if (!a || !confirm(`Move “${a.title || a.alt || "this image"}” to Trash? It will disappear from all boards. You can restore it from the sidebar.`)) return; await request(`/api/assets/${a.id}`,"DELETE");state.selected.clear();await refreshData();toast("Image moved to Trash. Restore it from the sidebar.");return; }
     else if (action === "group") { const group = `group_${crypto.randomUUID()}`; for (const i of chosen) { i.state.group = group; persistItem(i); } toast("Grouped. Drag one selected object to move the group."); }
@@ -258,7 +294,8 @@ async function performAction(action) {
 }
 function maxZ() { return Math.max(0,...currentItems().map(i=>i.state.z||0)); }
 function renderAll() { renderBoards(); renderLibrary(); renderTrash(); renderCanvas(); renderInspector(); }
-async function refreshData() { const data=await request("/api/bootstrap"); Object.assign(state,{boards:data.boards,folders:data.folders||[],assets:data.assets,fonts:data.fonts||[],items:data.items,trash:data.trash||[]});if(!state.boards.some(b=>b.id===state.boardId)){state.boardId="main";state.selected.clear();}applyCapabilities(data);loadFonts();renderAll(); }
+async function refreshData() { const data=await request("/api/bootstrap"); Object.assign(state,{boards:data.boards,folders:data.folders||[],assets:data.assets,models:data.models||[],fonts:data.fonts||[],items:data.items,trash:data.trash||[]});if(!state.boards.some(b=>b.id===state.boardId)){state.boardId="main";state.selected.clear();}applyCapabilities(data);loadFonts();renderAll(); }
+async function refreshKeepingView() { const localViews=new Map(state.boards.map(board=>[board.id,board.view]));const oldCount=state.assets.length;await refreshData();if(state.capabilities.demo){for(const board of state.boards)if(localViews.has(board.id))board.view=localViews.get(board.id);renderCanvas();}if(state.assets.length>oldCount)toast("New image saved to Library"); }
 function setTool(tool) { state.tool = tool; document.querySelectorAll(".tool").forEach(b=>{const selected=b.dataset.tool === tool;b.classList.toggle("active",selected);b.setAttribute("aria-pressed",String(selected));}); viewport.classList.toggle("pan-mode",tool === "pan"); }
 
 async function addObject(kind, x, y) {
@@ -274,10 +311,11 @@ function readFile(file) { return new Promise((resolve,reject)=>{ const reader = 
 async function uploadFiles(files) {
   const images = [...files].filter(f=>f.type.startsWith("image/"));
   if (!images.length) return toast("Choose an image file.");
-  let addedCount = 0;
-  for (const file of images) { try { const result = await request("/api/capture","POST",{image_data_url:await readFile(file),title:file.name,board_id:state.boardId}); if (!state.assets.some(a=>a.id===result.asset.id)) state.assets.unshift(result.asset); state.items.push(result.item); state.selected = new Set([result.item.id]); addedCount++; toast(result.duplicate ? "Image already saved; added to board" : "Image saved to your library"); } catch(e) { toast(`${file.name}: ${e.message}`); } }
+  const addedIds = [];
+  for (const file of images) { try { const result = await request("/api/capture","POST",{image_data_url:await readFile(file),title:file.name,board_id:state.boardId}); if (!state.assets.some(a=>a.id===result.asset.id)) state.assets.unshift(result.asset); state.items.push(result.item); addedIds.push(result.item.id); } catch(e) { toast(`${file.name}: ${e.message}`); } }
+  if (addedIds.length) state.selected = new Set(addedIds);
   renderAll();
-  if (addedCount) $("#add-images-dialog").close();
+  if (addedIds.length) { $("#add-images-dialog").close(); toast(addedIds.length === 1 ? "Image saved to your library" : `${addedIds.length} images added and selected.`); }
 }
 function acceptCapturedImage(result) {
   if (!state.assets.some(a=>a.id===result.asset.id))state.assets.unshift(result.asset);
@@ -457,7 +495,21 @@ $("#cancel-folder").onclick=()=>$("#folder-dialog").close();
 $("#delete-folder").onclick=async()=>{const folder=state.folders.find(f=>f.id===editingFolderId);if(!folder||!confirm(`Delete folder “${folder.name}”? Its boards will move to the main list.`))return;try{await request(`/api/folders/${folder.id}`,"DELETE");$("#folder-dialog").close();await refreshData();toast("Folder removed. Boards are still here.");}catch(err){toast(err.message);}};
 $("#folder-add-board").onclick=async()=>{const folderId=editingFolderId,name=prompt("Board name");if(!name?.trim())return;try{const board=await request("/api/boards","POST",{name:name.trim(),folder_id:folderId});state.closedFolders.delete(folderId);state.boardId=board.id;$("#folder-dialog").close();await refreshData();window.dispatchEvent(new Event("visual-brain-boards-changed"));toast("Board created in folder");}catch(err){toast(err.message);}};
 let editingAssetId=null, suggestionTimer=null;
-function openAssetDialog(id){const a=asset(id);if(!a)return;editingAssetId=id;$("#asset-edit-preview").src=`/api/assets/${encodeURIComponent(id)}`;$("#asset-edit-title").value=a.title||"";$("#asset-edit-title").placeholder=assetDisplayLabel(a);$("#asset-edit-collection").value=a.collection||"";$("#asset-edit-tags").value=(a.tags||[]).join(", ");$("#asset-edit-favorite").checked=!!a.favorite;$("#collection-names").innerHTML=[...new Set(state.assets.map(x=>x.collection).filter(Boolean))].map(name=>`<option value="${esc(name)}"></option>`).join("");$("#asset-dialog").showModal();loadSuggestions(id);}
+function openAssetDialog(id){
+  const a=asset(id);if(!a)return;
+  editingAssetId=id;
+  $("#asset-edit-preview").src=`/api/assets/${encodeURIComponent(id)}`;
+  $("#asset-edit-title").value=a.title||"";
+  $("#asset-edit-title").placeholder=assetDisplayLabel(a);
+  $("#asset-edit-collection").value=a.collection||"";
+  $("#asset-edit-tags").value=(a.tags||[]).join(", ");
+  $("#asset-edit-favorite").checked=!!a.favorite;
+  for(const [field,value] of [["url",a.source_url],["title",a.source_title],["author",a.source_author],["license",a.source_license],["license-url",a.source_license_url]]) $("#asset-source-"+field).value=value||"";
+  $("#asset-source-details").open=!!(a.source_url||a.source_author||a.source_license);
+  const sourceLink=$("#asset-open-source");sourceLink.hidden=!a.source_url;sourceLink.href=a.source_url||"#";
+  $("#collection-names").innerHTML=[...new Set(state.assets.map(x=>x.collection).filter(Boolean))].map(name=>`<option value="${esc(name)}"></option>`).join("");
+  $("#asset-dialog").showModal();loadSuggestions(id);
+}
 const suggestionBox=document.createElement("section");
 suggestionBox.id="asset-suggestions";suggestionBox.className="asset-suggestions";suggestionBox.setAttribute("aria-live","polite");
 $("#asset-edit-preview").insertAdjacentElement("afterend",suggestionBox);
@@ -492,7 +544,15 @@ async function loadSuggestions(id){
     suggestionBox.querySelector(".suggestion-retry")?.addEventListener("click",async()=>{try{await request(`/api/enrichment/${encodeURIComponent(id)}/retry`,"POST",{});loadSuggestions(id);}catch(error){toast(error.message);}});
   }catch(error){suggestionBox.innerHTML='<h3>Suggested tags</h3><p>Suggestions unavailable for this image.</p>';}
 }
-$("#asset-form").addEventListener("submit",async e=>{e.preventDefault();const a=asset(editingAssetId);if(!a)return;try{await request(`/api/assets/${a.id}`,"PUT",{title:$("#asset-edit-title").value.trim(),collection:$("#asset-edit-collection").value.trim(),tags:$("#asset-edit-tags").value.split(",").map(t=>t.trim()).filter(Boolean),favorite:$("#asset-edit-favorite").checked});$("#asset-dialog").close();await refreshData();toast("Image details saved");}catch(err){toast(err.message);}});
+$("#asset-form").addEventListener("submit",async e=>{e.preventDefault();const a=asset(editingAssetId);if(!a)return;try{await request(`/api/assets/${a.id}`,"PUT",{title:$("#asset-edit-title").value.trim(),collection:$("#asset-edit-collection").value.trim(),tags:$("#asset-edit-tags").value.split(",").map(t=>t.trim()).filter(Boolean),favorite:$("#asset-edit-favorite").checked,source:{url:$("#asset-source-url").value.trim(),title:$("#asset-source-title").value.trim(),author:$("#asset-source-author").value.trim(),license:$("#asset-source-license").value.trim(),license_url:$("#asset-source-license-url").value.trim()}});$("#asset-dialog").close();await refreshData();toast("Image and source details saved");}catch(err){toast(err.message);}});
+$("#asset-source-url").addEventListener("change",e=>{const link=$("#asset-open-source");link.hidden=!e.target.value.trim();link.href=e.target.value.trim()||"#";});
+$("#asset-copy-citation").onclick=async()=>{
+  const parts=[$("#asset-source-author").value.trim(),$("#asset-source-title").value.trim()||$("#asset-edit-title").value.trim(),$("#asset-source-url").value.trim()].filter(Boolean);
+  const license=$("#asset-source-license").value.trim();
+  const note=parts.join(" · ")+(license?` · License noted: ${license}`:"");
+  if(!note)return toast("Add a source detail first.");
+  try{await navigator.clipboard.writeText(note);toast("Source note copied. Check the page before reuse.");}catch{toast("Clipboard unavailable here.");}
+};
 $("#asset-cancel").onclick=()=>$("#asset-dialog").close();
 $("#asset-find-similar").onclick=()=>findSimilarImages(editingAssetId);
 $("#asset-save-original").onclick=()=>saveOriginalImage(editingAssetId);
@@ -515,6 +575,7 @@ $("#pair").onclick=()=>{$("#pair-key").value=state.key;$("#pair-dialog").showMod
 $("#copy-key").onclick=async()=>{await navigator.clipboard.writeText(state.key);toast("Pairing key copied");};
 $("#sidebar-toggle").onclick=()=>$("#sidebar").classList.toggle("open");
 $("#sidebar-close").onclick=()=>$("#sidebar").classList.remove("open");
+$("#refresh-library").onclick=async()=>{try{await refreshKeepingView();toast("Boards and library refreshed.");}catch(error){toast(error.message);}};
 
 function applyCapabilities(data) {
   const caps=data.capabilities || {runtime:data.key?"local":"hosted",extension_capture:!!data.key,local_visual_search:!!data.local_visual_search_available,similar_images:true,backup_export:true};
@@ -556,28 +617,18 @@ async function init() {
       signOut.innerHTML='<button type="submit" style="font:600 12px system-ui;border:0;background:none;color:inherit;text-decoration:underline;cursor:pointer">Sign out</button>';
       $("#save-status").before(signOut);
     }
-    Object.assign(state,{key:data.key,canEdit:!!data.can_edit,boards:data.boards,folders:data.folders||[],assets:data.assets,fonts:data.fonts||[],items:data.items,trash:data.trash||[]});
+    Object.assign(state,{key:data.key,canEdit:!!data.can_edit,boards:data.boards,folders:data.folders||[],assets:data.assets,models:data.models||[],fonts:data.fonts||[],items:data.items,trash:data.trash||[]});
     applyCapabilities(data);
     const route=new URLSearchParams(location.search),routeBoard=route.get("board"),routeItem=route.get("item");
     if(state.boards.some(board=>board.id===routeBoard))state.boardId=routeBoard;
     if(state.items.some(item=>item.id===routeItem&&item.board_id===state.boardId))state.selected=new Set([routeItem]);
     loadFonts();renderAll();
-    setInterval(async()=>{
-      if(state.drag||document.querySelector("dialog[open]"))return;
-      try {
-        const data=await request("/api/bootstrap");applyCapabilities(data);
-        const analysisChanged=data.assets.some((a,i)=>a.auto_analyzed_at!==state.assets[i]?.auto_analyzed_at);
-        const fontsChanged=(data.fonts||[]).some((font,i)=>font.id!==state.fonts[i]?.id)||(data.fonts||[]).length!==state.fonts.length;
-        if(data.items.length!==state.items.length||data.assets.length!==state.assets.length||analysisChanged||fontsChanged||(data.trash||[]).length!==state.trash.length||data.boards.length!==state.boards.length||(data.folders||[]).length!==state.folders.length){
-          const newImage=data.assets.length>state.assets.length;
-          const localViews=new Map(state.boards.map(b=>[b.id,b.view]));
-          Object.assign(state,{items:data.items,assets:data.assets,fonts:data.fonts||[],trash:data.trash||[],boards:data.boards,folders:data.folders||[]});
-          if(state.capabilities.demo) for(const b of state.boards) if(localViews.has(b.id)) b.view=localViews.get(b.id);  // in the playground each visitor keeps their own pan and zoom
-          if(!state.boards.some(b=>b.id===state.boardId)){state.boardId="main";state.selected.clear();}
-          loadFonts();renderAll();if(newImage)toast("New image saved to Library");
-        }
-      } catch {}
-    },4000);
+    const syncOnReturn=async()=>{
+      if(document.hidden||state.drag||document.querySelector("dialog[open]"))return;
+      try{await refreshKeepingView();}catch{}
+    };
+    window.addEventListener("focus",syncOnReturn);
+    document.addEventListener("visibilitychange",syncOnReturn);
   } catch(e) { toast(`Could not load board: ${e.message}`); }
 }
 init();
