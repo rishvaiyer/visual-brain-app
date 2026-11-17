@@ -40,7 +40,7 @@ class OutboundBridgeHTTP(unittest.TestCase):
                        VISUAL_BRAIN_DATA_DIR=temporary,
                        VISUAL_BRAIN_3D_WORKER_DIR=str(Path(temporary) / "absent-worker"),
                        VISUAL_BRAIN_3D_OUTBOUND="1", VISUAL_BRAIN_3D_REMOTE_TOKEN=token,
-                       VISUAL_BRAIN_3D_REMOTE_ORIGIN="")
+                       VISUAL_BRAIN_3D_REMOTE_ORIGIN="", VISUAL_BRAIN_RELIEF="0")
             app = subprocess.Popen([sys.executable, str(ROOT / "server.py")], env=env,
                                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=subprocess.DEVNULL, text=True)

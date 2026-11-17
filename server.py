@@ -34,6 +34,7 @@ from PIL import Image, ImageOps
 import hosting
 import visual_features
 import free_3d
+import free_3d_relief
 import outbound_3d
 
 ROOT = Path(__file__).resolve().parent
@@ -99,7 +100,8 @@ def setup() -> str:
               status TEXT NOT NULL, error TEXT NOT NULL DEFAULT '',
               created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
               source_crop TEXT NOT NULL DEFAULT '{}',
-              source_asset_ids TEXT NOT NULL DEFAULT '[]'
+              source_asset_ids TEXT NOT NULL DEFAULT '[]',
+              engine TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS critique_invites (
               board_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
@@ -140,6 +142,8 @@ def setup() -> str:
             db.execute("ALTER TABLE models ADD COLUMN source_crop TEXT NOT NULL DEFAULT '{}'")
         if "source_asset_ids" not in model_columns:
             db.execute("ALTER TABLE models ADD COLUMN source_asset_ids TEXT NOT NULL DEFAULT '[]'")
+        if "engine" not in model_columns:
+            db.execute("ALTER TABLE models ADD COLUMN engine TEXT NOT NULL DEFAULT ''")
         db.execute("INSERT OR IGNORE INTO boards(id,name,view,created_at,updated_at) VALUES(?,?,?,?,?)",
                    ("main", "Everything", json.dumps({"x": 0, "y": 0, "zoom": 1}), now(), now()))
         enrichment.init_db(db)
@@ -416,6 +420,7 @@ def capabilities():
         "local_visual_search": local_visual_search_available(),
         "similar_images": True,
         "free_3d": generation_available(),
+        "free_3d_engine": generation_engine(),
         "max_3d_images": 2 if hosting.DEMO else 8,
         "free_3d_multi": generation_available(multi=True),
         "min_3d_multi_images": free_3d.MIN_MULTI_PHOTOS,
@@ -427,10 +432,23 @@ def capabilities():
     }
 
 
-def generation_available(multi: bool = False) -> bool:
+def worker_available(multi: bool = False) -> bool:
+    """A full 3D worker (this machine's, or the private one) is ready for a job."""
     if OUTBOUND_BRIDGE.enabled:
         return OUTBOUND_BRIDGE.connected(multi)
     return free_3d.multi_worker_available() if multi else free_3d.worker_available()
+
+
+def generation_engine() -> str:
+    """Which engine a one-photo job would use now: "worker", "builtin" or ""."""
+    if worker_available():
+        return "worker"
+    return "builtin" if free_3d_relief.available() else ""
+
+
+def generation_available(multi: bool = False) -> bool:
+    # One photo always has the built-in engine to fall back on. Many angles need a worker.
+    return worker_available(multi) or (not multi and free_3d_relief.available())
 
 
 def forget_local_visual_vectors(asset_ids):
@@ -731,6 +749,7 @@ def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> Non
             db.execute("UPDATE models SET status='running',updated_at=? WHERE id=?", (now(), model_id))
             db.commit()
         output = MODELS / f"{model_id}.glb"
+        engine = ""
         try:
             with tempfile.TemporaryDirectory(prefix="visual-brain-3d-source-") as temporary:
                 if isinstance(source_filename, list):
@@ -747,10 +766,18 @@ def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> Non
                         continue  # the worker posts the finished GLB to the callback route
                 else:
                     source = free_3d.cropped_source(ASSETS / source_filename, Path(temporary) / "source.jpg", crop)
-                    if OUTBOUND_BRIDGE.enabled:
-                        OUTBOUND_BRIDGE.send_job(model_id, "single", free_3d.remote_image_bytes(source))
-                        continue  # the Ryzen worker posts the finished model to the callback
-                    if free_3d.local_available():
+                    if not worker_available() and free_3d_relief.available():
+                        engine = "builtin-" + free_3d_relief.generate(source, output)
+                    elif OUTBOUND_BRIDGE.enabled:
+                        try:
+                            OUTBOUND_BRIDGE.send_job(model_id, "single", free_3d.remote_image_bytes(source))
+                            continue  # the Ryzen worker posts the finished model to the callback
+                        except RuntimeError:
+                            if not free_3d_relief.available():
+                                raise
+                            # The worker dropped between the check and the send.
+                            engine = "builtin-" + free_3d_relief.generate(source, output)
+                    elif free_3d.local_available():
                         free_3d.generate(source, output)
                     else:
                         free_3d.dispatch_remote(model_id, source)
@@ -761,8 +788,8 @@ def _generate_board_models(jobs: list[tuple[str, str | list[str], dict]]) -> Non
             status, error = "failed", str(exc)[:250]
         with LOCK, connection() as db:
             if db.execute("SELECT 1 FROM models WHERE id=?", (model_id,)).fetchone():
-                db.execute("UPDATE models SET status=?,error=?,updated_at=? WHERE id=?",
-                           (status, error, now(), model_id))
+                db.execute("UPDATE models SET status=?,error=?,engine=?,updated_at=? WHERE id=?",
+                           (status, error, engine if status == "ready" else "", now(), model_id))
                 db.commit()
             else:
                 output.unlink(missing_ok=True)

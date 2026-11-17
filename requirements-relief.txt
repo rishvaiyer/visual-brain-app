@@ -1,0 +1,4 @@
+# Optional: the built-in one-photo 3D engine (free_3d_relief.py).
+# The board runs without these; 3D then needs a worker or an imported GLB.
+numpy>=2,<3
+onnxruntime>=1.20,<2
