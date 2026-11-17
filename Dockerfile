@@ -20,6 +20,14 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Built-in one-photo 3D. The open depth model (Depth Anything V2 Small, Apache-2.0)
+# is fetched once here, checked against a pinned SHA-256, and kept outside /app so
+# the ownership change below does not copy it into another layer.
+ENV VISUAL_BRAIN_RELIEF_MODEL=/opt/visual-brain/relief-model/depth_anything_v2_small.onnx
+COPY requirements-relief.txt free_3d_relief.py ./
+RUN pip install --no-cache-dir -r requirements-relief.txt \
+ && python3 free_3d_relief.py --install
+
 # Application code only. Anything matching .dockerignore, data/ above all, stays out.
 COPY *.py ./
 COPY *.html *.css *.js favicon.svg ./

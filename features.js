@@ -171,7 +171,10 @@ window.create3DBoard = async (itemIds, mode = "separate") => {
     state.selected.clear();
     await refreshData();
     fitContent();
-    toast(grouped ? "One-object board created. Open it later to check the model." : "New 3D board created. Open it later to check the models.");
+    const quick = !grouped && state.capabilities.free_3d_engine === "builtin";
+    toast(grouped ? "One-object board created. Open it later to check the model." : quick ? "New 3D board created. Models appear in a few seconds." : "New 3D board created. Open it later to check the models.");
+    // The built-in engine finishes in seconds, so show the result without a manual check.
+    if (quick) for (const delay of [2500, 7000]) setTimeout(() => { if (state.boardId === result.board_id && state.models.some(entry => ["queued", "running"].includes(entry.status))) refreshData().catch(() => {}); }, delay);
   } catch (error) { toast(error.message); }
 };
 
@@ -198,6 +201,7 @@ window.openModelDetail = async modelId => {
   const source = asset(entry.source_asset_id);
   const sourceCount = Array.isArray(entry.source_asset_ids) ? entry.source_asset_ids.length : 0;
   featureEl("#model-dialog-source").textContent = sourceCount > 1 ? `Made from ${sourceCount} angles. Rotate it or place it in your room.` : source ? `From ${assetDisplayLabel(source)}. Rotate it or place it in your room.` : "Rotate it or place it in your room.";
+  if (String(entry.engine || "").startsWith("builtin")) featureEl("#model-dialog-source").textContent += " Quick 3D: the front follows the photo, the back is a guess.";
   const sourceItem = state.items.find(entryItem => entryItem.state.model_id === modelId);
   featureEl("#model-height").value = sourceItem?.state.real_height_cm || "";
   featureEl("#model-placement").value = sourceItem?.state.ar_placement || "floor";

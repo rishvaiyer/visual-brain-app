@@ -33,6 +33,22 @@ Needs Python 3.10 or newer. No database server, no accounts, no cloud.
 - **Source trail and taste map.** Keep an image's page, maker, and license details; see visual groups across the library.
 - **Private critique.** Pin comments to exact spots on images and models. On a private hosted board, create a board-only review link and revoke it when done.
 
+### Built-in photo to 3D
+
+**Go to 3D** works out of the box on a hosted copy, with no worker, account or upload to anyone else. An open depth model ([Depth Anything V2 Small](https://huggingface.co/onnx-community/depth-anything-v2-small), Apache-2.0) runs on the CPU inside the app and takes about a second per picture.
+
+- A thing photographed on a plain backdrop is cut out and closed into a solid you can turn. The front follows the photo. The back is a mirrored guess, because one photo never shows it.
+- Any other picture becomes a relief tile: the photo pressed into its own depth, with a plain back.
+
+To switch it on for a local copy:
+
+```sh
+python3 -m pip install -r requirements-relief.txt
+python3 free_3d_relief.py --install   # one 99 MB download, checked against a pinned SHA-256
+```
+
+Set `VISUAL_BRAIN_RELIEF=0` to switch it off. When a full 3D worker (below) is connected it is used instead; the built-in engine takes over whenever that worker is away. One model from many angles always needs the worker.
+
 ### Free photo-to-3D worker
 
 Photo-to-3D generation runs on your own Linux CPU using [TripoSR](https://github.com/VAST-AI-Research/TripoSR). On the Ryzen, run `bash tools/setup_3d_cpu.sh` once. It downloads the open model and checks a sample before enabling **Go to 3D**. A clean object photo works best; one selected photo makes one model. Generation can take a while, so use **Check result** on the new board. Importing a GLB file does not need the worker.
@@ -41,7 +57,7 @@ For one model from many angles, run `bash tools/setup_3d_multi_cpu.sh` on the Ry
 
 To check the complete private dispatch and return path before connecting a hosted site, set `VISUAL_BRAIN_3D_WORKER_DIR` to the installed Ryzen worker folder and run `python3 tools/smoke_3d_multi_cpu.py /path/to/jpeg-orbit /path/to/result.glb --remote-loopback`. The temporary board and worker stay on loopback; the result GLB is saved at the chosen output path.
 
-The normal hosted container includes the viewer and GLB import, but does not install the large CPU worker. For the free Ryzen worker, run `free_3d_worker.py` on Ryzen with `VISUAL_BRAIN_WORKER_TOKEN_FILE` pointing to a protected credential and `VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN` set to the hosted site. Set `VISUAL_BRAIN_3D_OUTBOUND=1` and the matching `VISUAL_BRAIN_3D_REMOTE_TOKEN` as private hosted-service variables. Run `free_3d_outbound.py` on Ryzen with the same credential, callback origin, and loopback worker port. It opens one authenticated WebSocket to the hosted site and forwards source photos to the loopback worker; the worker sends completed models through the protected callback. No inbound route or paid worker is needed. Keep token values out of source and logs. Room placement needs a compatible phone and a secure site address.
+The normal hosted container includes the viewer, GLB import and the built-in engine above, but does not install the large CPU worker. For the free Ryzen worker, run `free_3d_worker.py` on Ryzen with `VISUAL_BRAIN_WORKER_TOKEN_FILE` pointing to a protected credential and `VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN` set to the hosted site. Set `VISUAL_BRAIN_3D_OUTBOUND=1` and the matching `VISUAL_BRAIN_3D_REMOTE_TOKEN` as private hosted-service variables. Run `free_3d_outbound.py` on Ryzen with the same credential, callback origin, and loopback worker port. It opens one authenticated WebSocket to the hosted site and forwards source photos to the loopback worker; the worker sends completed models through the protected callback. No inbound route or paid worker is needed. Keep token values out of source and logs. Room placement needs a compatible phone and a secure site address.
 
 ## Browser extension
 
@@ -79,11 +95,12 @@ python3 -m unittest tests/test_hosted_security.py
 python3 -m unittest tests/test_enrichment.py tests/test_inspo_fonts.py
 python3 tests/test_free_features_e2e.py # free feature flows over HTTP
 python3 tests/test_remote_3d_bridge.py  # private worker dispatch and callback
+python3 -m unittest tests/test_relief_3d.py # built-in 3D: mesh rules, then a real photo over HTTP
 python3 tests/test_demo_seed.py             # sample boards: seeding, routes, a copy without pictures
 node tests/test_extension_menu.js && node tests/test_extension_targets.js && node tests/test_extension_fallback.js
 ```
 
-Plain Python standard library HTTP server, SQLite, vanilla JavaScript. Two dependencies: `requests` and `Pillow`.
+Plain Python standard library HTTP server, SQLite, vanilla JavaScript. Two dependencies: `requests` and `Pillow`. The built-in 3D engine adds two optional ones, `numpy` and `onnxruntime`.
 
 ## License
 
