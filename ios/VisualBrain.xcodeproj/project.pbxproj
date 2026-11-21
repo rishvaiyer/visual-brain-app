@@ -1,0 +1,501 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3DDAFFF42C900546D521C2B6 /* IPhoneCameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356D4175A3B21C456AA8E0CF /* IPhoneCameraSource.swift */; };
+		4197238FD76D5C22B3ADF240 /* MetaGlassesSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29FE82159C75F91985389986 /* MetaGlassesSource.swift */; };
+		6AF3D0CFFC6CCD42E23E10D6 /* PrivateBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF732AF48667A9D30353C44 /* PrivateBoardView.swift */; };
+		7B8D06BA0A477470C0284840 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 1387423EFBB4C6B12999F31F /* MWDATCamera */; };
+		7D68571A34F9F5CD7CBCEDD0 /* FrameSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B859919EF059CC67BD8E47CE /* FrameSource.swift */; };
+		84D4D43BD72D5736690FCF78 /* VisualBrainApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF783F822D4C7A8374B8779C /* VisualBrainApp.swift */; };
+		A93E0E87F7FE1AB0634BF88D /* LibraryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5228C842D707E2FCE8223EB9 /* LibraryClient.swift */; };
+		BAD2EE073F02CC521DA358B2 /* LibraryContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B086C580367772E45D7B6AB /* LibraryContractTests.swift */; };
+		EA268EBC2672C8ADEE289692 /* BrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D2F3B9561ECC31C7880EF /* BrainView.swift */; };
+		EB5F0AFA2CC1B054E528E44E /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6F743F8454149C121052A2A9 /* MWDATCore */; };
+		F7890C82C94214488573BB65 /* BrainModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273AE44CF902E68788E275EA /* BrainModel.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D30CD96F181040B8BE8FEA1F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8B12B2152E02F319BD2E0CB2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 45C328ECFC7D49A86911D67A;
+			remoteInfo = VisualBrain;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1B5A845DB9D5B619FD63187F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		273AE44CF902E68788E275EA /* BrainModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainModel.swift; sourceTree = "<group>"; };
+		29FE82159C75F91985389986 /* MetaGlassesSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetaGlassesSource.swift; sourceTree = "<group>"; };
+		356D4175A3B21C456AA8E0CF /* IPhoneCameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneCameraSource.swift; sourceTree = "<group>"; };
+		434D2F3B9561ECC31C7880EF /* BrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainView.swift; sourceTree = "<group>"; };
+		4B086C580367772E45D7B6AB /* LibraryContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryContractTests.swift; sourceTree = "<group>"; };
+		5228C842D707E2FCE8223EB9 /* LibraryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryClient.swift; sourceTree = "<group>"; };
+		5C14525E0F0B7EAFB2034811 /* VisualBrainTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VisualBrainTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DF732AF48667A9D30353C44 /* PrivateBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateBoardView.swift; sourceTree = "<group>"; };
+		92DC12E73F6B28FD643540D2 /* VisualBrain.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VisualBrain.entitlements; sourceTree = "<group>"; };
+		B859919EF059CC67BD8E47CE /* FrameSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSource.swift; sourceTree = "<group>"; };
+		DF783F822D4C7A8374B8779C /* VisualBrainApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualBrainApp.swift; sourceTree = "<group>"; };
+		E397BEF6E3698E2394083E63 /* VisualBrain.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VisualBrain.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AEF6CB1F24A7E65998BCD3F7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB5F0AFA2CC1B054E528E44E /* MWDATCore in Frameworks */,
+				7B8D06BA0A477470C0284840 /* MWDATCamera in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		13AE0F0A03359C9CC0C2A78B /* VisualBrainTests */ = {
+			isa = PBXGroup;
+			children = (
+				4B086C580367772E45D7B6AB /* LibraryContractTests.swift */,
+			);
+			path = VisualBrainTests;
+			sourceTree = "<group>";
+		};
+		31101A0A056B0E8CE3E3539F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				434D2F3B9561ECC31C7880EF /* BrainView.swift */,
+				7DF732AF48667A9D30353C44 /* PrivateBoardView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		434386C650947575D8BB71AA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E397BEF6E3698E2394083E63 /* VisualBrain.app */,
+				5C14525E0F0B7EAFB2034811 /* VisualBrainTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		65A6AAC529F910FA4F9F4D72 /* VisualBrain */ = {
+			isa = PBXGroup;
+			children = (
+				273AE44CF902E68788E275EA /* BrainModel.swift */,
+				1B5A845DB9D5B619FD63187F /* Info.plist */,
+				92DC12E73F6B28FD643540D2 /* VisualBrain.entitlements */,
+				DF783F822D4C7A8374B8779C /* VisualBrainApp.swift */,
+				B79EE2608069656DE838B0F8 /* Frames */,
+				EC4EAD9E9AC9B2FF8CA2C1D4 /* Networking */,
+				31101A0A056B0E8CE3E3539F /* Views */,
+			);
+			path = VisualBrain;
+			sourceTree = "<group>";
+		};
+		B79EE2608069656DE838B0F8 /* Frames */ = {
+			isa = PBXGroup;
+			children = (
+				B859919EF059CC67BD8E47CE /* FrameSource.swift */,
+				356D4175A3B21C456AA8E0CF /* IPhoneCameraSource.swift */,
+				29FE82159C75F91985389986 /* MetaGlassesSource.swift */,
+			);
+			path = Frames;
+			sourceTree = "<group>";
+		};
+		EC4EAD9E9AC9B2FF8CA2C1D4 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				5228C842D707E2FCE8223EB9 /* LibraryClient.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		F3EE3BC13292C6680F4743C4 = {
+			isa = PBXGroup;
+			children = (
+				65A6AAC529F910FA4F9F4D72 /* VisualBrain */,
+				13AE0F0A03359C9CC0C2A78B /* VisualBrainTests */,
+				434386C650947575D8BB71AA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2DC081A19E46280465581437 /* VisualBrainTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5065164A3708BCE5DEA9C9E1 /* Build configuration list for PBXNativeTarget "VisualBrainTests" */;
+			buildPhases = (
+				7993840F774FDE4E2A9D56F2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				561338B62EFD6F1810FFEAC3 /* PBXTargetDependency */,
+			);
+			name = VisualBrainTests;
+			packageProductDependencies = (
+			);
+			productName = VisualBrainTests;
+			productReference = 5C14525E0F0B7EAFB2034811 /* VisualBrainTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		45C328ECFC7D49A86911D67A /* VisualBrain */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A83766F4FCC539F8679D256 /* Build configuration list for PBXNativeTarget "VisualBrain" */;
+			buildPhases = (
+				BF925ABB52DEBE01CB886833 /* Sources */,
+				AEF6CB1F24A7E65998BCD3F7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VisualBrain;
+			packageProductDependencies = (
+				6F743F8454149C121052A2A9 /* MWDATCore */,
+				1387423EFBB4C6B12999F31F /* MWDATCamera */,
+			);
+			productName = VisualBrain;
+			productReference = E397BEF6E3698E2394083E63 /* VisualBrain.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8B12B2152E02F319BD2E0CB2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2DC081A19E46280465581437 = {
+						DevelopmentTeam = "";
+					};
+					45C328ECFC7D49A86911D67A = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = F30642B86A970A69E3A9FAE5 /* Build configuration list for PBXProject "VisualBrain" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = F3EE3BC13292C6680F4743C4;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				674EC5F9BA787F4E5F8CF240 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 434386C650947575D8BB71AA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				45C328ECFC7D49A86911D67A /* VisualBrain */,
+				2DC081A19E46280465581437 /* VisualBrainTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7993840F774FDE4E2A9D56F2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BAD2EE073F02CC521DA358B2 /* LibraryContractTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF925ABB52DEBE01CB886833 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F7890C82C94214488573BB65 /* BrainModel.swift in Sources */,
+				EA268EBC2672C8ADEE289692 /* BrainView.swift in Sources */,
+				7D68571A34F9F5CD7CBCEDD0 /* FrameSource.swift in Sources */,
+				3DDAFFF42C900546D521C2B6 /* IPhoneCameraSource.swift in Sources */,
+				A93E0E87F7FE1AB0634BF88D /* LibraryClient.swift in Sources */,
+				4197238FD76D5C22B3ADF240 /* MetaGlassesSource.swift in Sources */,
+				6AF3D0CFFC6CCD42E23E10D6 /* PrivateBoardView.swift in Sources */,
+				84D4D43BD72D5736690FCF78 /* VisualBrainApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		561338B62EFD6F1810FFEAC3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 45C328ECFC7D49A86911D67A /* VisualBrain */;
+			targetProxy = D30CD96F181040B8BE8FEA1F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		21B1D83865FC4FD6291AD369 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rishvaiyer.VisualBrainTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VisualBrain.app/VisualBrain";
+			};
+			name = Release;
+		};
+		5C9F5D2E9B5302CF0847EBB6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rishvaiyer.VisualBrainTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VisualBrain.app/VisualBrain";
+			};
+			name = Debug;
+		};
+		6EE315FF90965AD4BE7513A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VisualBrain/VisualBrain.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VisualBrain/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rishvaiyer.visualbrain;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6EF8FA33EE3CD8BE39165D31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLIENT_TOKEN = "";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0.0;
+				META_APP_ID = 0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		7FD5C6F3BFB729AEAA4B1954 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLIENT_TOKEN = "";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0.0;
+				META_APP_ID = 0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		EF91A7B70B1974FAFE851C0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VisualBrain/VisualBrain.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VisualBrain/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rishvaiyer.visualbrain;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5065164A3708BCE5DEA9C9E1 /* Build configuration list for PBXNativeTarget "VisualBrainTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C9F5D2E9B5302CF0847EBB6 /* Debug */,
+				21B1D83865FC4FD6291AD369 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5A83766F4FCC539F8679D256 /* Build configuration list for PBXNativeTarget "VisualBrain" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6EE315FF90965AD4BE7513A7 /* Debug */,
+				EF91A7B70B1974FAFE851C0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F30642B86A970A69E3A9FAE5 /* Build configuration list for PBXProject "VisualBrain" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FD5C6F3BFB729AEAA4B1954 /* Debug */,
+				6EF8FA33EE3CD8BE39165D31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		674EC5F9BA787F4E5F8CF240 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/meta/meta-wearables-dat-ios";
+			requirement = {
+				kind = exactVersion;
+				version = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1387423EFBB4C6B12999F31F /* MWDATCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 674EC5F9BA787F4E5F8CF240 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCamera;
+		};
+		6F743F8454149C121052A2A9 /* MWDATCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 674EC5F9BA787F4E5F8CF240 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 8B12B2152E02F319BD2E0CB2 /* Project object */;
+}

@@ -3,6 +3,11 @@ const featureEl = selector => document.querySelector(selector);
 const tasteDialog = featureEl("#taste-dialog");
 const pointDialog = featureEl("#point-dialog");
 let pointStream = null;
+let pointCameraRevision = 0;
+let pointMatchRevision = 0;
+let pointMatchController = null;
+let pointMatching = false;
+let pointCompanionRevision = 0;
 let tasteGroups = [];
 
 function boardForAsset(assetId) {
@@ -59,76 +64,194 @@ async function openTasteMap() {
 }
 
 function stopPointCamera() {
+  pointCameraRevision += 1;
   pointStream?.getTracks().forEach(track => track.stop());
   pointStream = null;
-  featureEl("#point-video").srcObject = null;
+  const video = featureEl("#point-video");
+  video.srcObject = null;
+  video.hidden = true;
+  featureEl("#point-camera-off").hidden = false;
   featureEl("#point-capture").disabled = true;
+  featureEl("#point-stop").disabled = true;
+  featureEl("#point-start").disabled = pointMatching;
   featureEl("#point-start").textContent = "Start camera";
 }
 
 async function startPointCamera() {
+  if (pointMatching) return;
   const status = featureEl("#point-status");
-  status.textContent = "";
   if (!navigator.mediaDevices?.getUserMedia) {
     status.textContent = "This browser cannot open a camera here. Choose a photo instead.";
     return;
   }
   stopPointCamera();
+  const revision = pointCameraRevision;
+  status.textContent = "Opening this device’s camera…";
+  featureEl("#point-start").disabled = true;
   try {
-    pointStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: "environment"}}, audio: false});
+    const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: "environment"}}, audio: false});
+    if (revision !== pointCameraRevision || !pointDialog.open) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    pointStream = stream;
     const video = featureEl("#point-video");
     video.srcObject = pointStream;
     await video.play();
-    featureEl("#point-capture").disabled = false;
+    if (revision !== pointCameraRevision || !pointDialog.open) return;
+    video.hidden = false;
+    featureEl("#point-camera-off").hidden = true;
+    featureEl("#point-capture").disabled = pointMatching;
+    featureEl("#point-stop").disabled = false;
+    featureEl("#point-start").disabled = pointMatching;
     featureEl("#point-start").textContent = "Restart camera";
+    status.textContent = "This device’s camera is on. Choose Find matching boards when ready.";
+    stream.getVideoTracks().forEach(track => track.addEventListener("ended", () => {
+      if (pointStream !== stream) return;
+      stopPointCamera();
+      status.textContent = "Camera off. Start it again or choose a photo.";
+    }));
   } catch {
+    if (revision !== pointCameraRevision) return;
+    stopPointCamera();
     status.textContent = "Camera unavailable or permission was declined. Choose a photo instead.";
   }
 }
 
-function matchDescription(score) {
-  if (score >= .82) return "Close visual match";
-  if (score >= .68) return "Looks similar";
-  return "Nearest saved image";
+async function openPointReopen() {
+  pointDialog.showModal();
+  featureEl("#point-status").textContent = "Camera off. Start this device’s camera or choose a photo.";
+  const revision = ++pointCompanionRevision;
+  const link = featureEl("#point-companion-open");
+  const status = featureEl("#point-companion-status");
+  link.hidden = true;
+  link.removeAttribute("href");
+  if (state.capabilities.demo) {
+    status.textContent = "This is a shared playground. The iPhone companion connects to your private Visual Brain library.";
+    return;
+  }
+  if (!state.canEdit) {
+    status.textContent = "Sign in to a private Visual Brain library to connect the companion.";
+    return;
+  }
+  status.textContent = "Checking this library’s companion connection…";
+  try {
+    const details = await request("/api/glasses/status");
+    if (revision !== pointCompanionRevision || !pointDialog.open) return;
+    if (!details.private_library || !state.canEdit) {
+      status.textContent = "Sign in to a private Visual Brain library to connect the companion.";
+    } else if (location.protocol !== "https:") {
+      status.textContent = "Open your private library at its HTTPS address to connect an iPhone.";
+    } else if (details.transport === "iphone-meta-dat" && details.companion_scheme === "visualbrain") {
+      const handoff = new URL("visualbrain://connect");
+      handoff.searchParams.set("server", location.origin);
+      link.href = handoff.href;
+      link.hidden = false;
+      status.textContent = details.voice_available
+        ? "Private library ready. The companion can show and speak your results."
+        : "Private library ready. Results appear in the iPhone companion.";
+    } else {
+      status.textContent = "The companion connection is unavailable on this server. Check the setup guide.";
+    }
+  } catch {
+    if (revision !== pointCompanionRevision || !pointDialog.open) return;
+    status.textContent = "The companion connection could not be checked. Reopen this panel to try again, or read the setup guide.";
+  }
 }
 
 function showPointMatches(matches) {
   if (!matches.length) {
-    featureEl("#point-results").innerHTML = '<p class="feature-empty">No saved images to compare yet.</p>';
+    featureEl("#point-results").innerHTML = '<p class="feature-empty">No saved images were found to compare. Add a reference to your library, then try again.</p>';
     return;
   }
   const cards = matches.slice(0, 8).map(match => {
     const image = asset(match.id);
-    if (!image) return "";
-    const boards = (match.boards || []).map(id => state.boards.find(board => board.id === id)).filter(Boolean);
-    return `<article class="point-match"><img src="/api/assets/${encodeURIComponent(match.id)}" alt="${esc(assetDisplayLabel(image))}"><div><strong>${esc(assetDisplayLabel(image))}</strong><small>${matchDescription(match.similarity)}</small><div class="point-board-links">${boards.length ? boards.map(board => `<button type="button" data-open-board="${esc(board.id)}">${esc(board.name)}</button>`).join("") : "<span>In Library only</span>"}</div></div></article>`;
+    const title = typeof match.title === "string" && match.title ? match.title : image ? assetDisplayLabel(image) : "Saved image";
+    const boards = (match.boards || []).map((id, index) => {
+      const detail = (match.board_names || []).find(board => board?.id === id);
+      const suppliedName = detail?.name ?? match.board_names?.[index];
+      return {id, name: state.boards.find(board => board.id === id)?.name ||
+        (typeof suppliedName === "string" ? suppliedName : "Open board")};
+    });
+    return `<article class="point-match"><img src="/api/assets/${encodeURIComponent(match.id)}" alt="${esc(title)}"><div><strong>${esc(title)}</strong><small>Similar colors and shapes</small><div class="point-board-links">${boards.length ? boards.map(board => `<a href="/board?board=${encodeURIComponent(board.id)}" data-open-board="${esc(board.id)}">${esc(board.name)}</a>`).join("") : "<span>In Library only</span>"}</div></div></article>`;
   }).join("");
-  featureEl("#point-results").innerHTML = `<h3>Saved visual neighbors</h3><p>These look similar; a match does not prove they are the same object.</p>${cards}`;
-  featureEl("#point-results").querySelectorAll("[data-open-board]").forEach(button => button.addEventListener("click", () => openBoardFromFeature(button.dataset.openBoard)));
+  featureEl("#point-results").innerHTML = `<h3>Similar saved images</h3><p>Compare colors and shapes with your reference before choosing a board.</p>${cards}`;
+  featureEl("#point-results").querySelectorAll("[data-open-board]").forEach(link => link.addEventListener("click", event => {
+    if (!state.boards.some(board => board.id === link.dataset.openBoard)) return;
+    event.preventDefault();
+    openBoardFromFeature(link.dataset.openBoard);
+  }));
 }
 
 async function pointMatch(dataUrl) {
+  if (pointMatching || !pointDialog.open) return;
+  const revision = ++pointMatchRevision;
+  pointMatching = true;
+  pointMatchController = new AbortController();
   const status = featureEl("#point-status");
-  const button = featureEl("#point-capture");
-  button.disabled = true;
+  const results = featureEl("#point-results");
+  featureEl("#point-capture").disabled = true;
+  featureEl("#point-start").disabled = true;
+  featureEl("#point-file-input").disabled = true;
+  featureEl("#point-choose").disabled = true;
   status.textContent = "Comparing with your saved images…";
+  results.setAttribute("aria-busy", "true");
+  results.innerHTML = '<p class="feature-loading">Looking through your saved references…</p>';
   try {
-    const result = await request("/api/camera-match", "POST", {image_data_url: dataUrl});
+    if (!state.canEdit) throw new Error("Sign in to search this private library.");
+    const response = await fetch("/api/camera-match", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"Content-Type": "application/json", "X-Board-Key": state.key},
+      body: JSON.stringify({image_data_url: dataUrl}),
+      signal: pointMatchController.signal
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "The image could not be compared. Try again.");
+    if (revision !== pointMatchRevision || !pointDialog.open) return;
     showPointMatches(result.matches || []);
-    status.textContent = "Compared here. The frame was not saved.";
+    status.textContent = "Comparison finished. Your search image was not saved.";
   } catch (error) {
+    if (revision !== pointMatchRevision || !pointDialog.open) return;
     status.textContent = error.message;
+    results.innerHTML = '<p class="feature-error">The comparison could not finish. Try again or choose another image.</p>';
   } finally {
-    button.disabled = !pointStream;
+    if (revision === pointMatchRevision) {
+      pointMatching = false;
+      pointMatchController = null;
+      featureEl("#point-capture").disabled = !pointStream;
+      featureEl("#point-start").disabled = false;
+      featureEl("#point-file-input").disabled = false;
+      featureEl("#point-choose").disabled = false;
+      results.setAttribute("aria-busy", "false");
+    }
   }
 }
 
 featureEl("#open-taste-map").addEventListener("click", openTasteMap);
 featureEl("#close-taste-map").addEventListener("click", () => tasteDialog.close());
-featureEl("#open-point-reopen").addEventListener("click", () => pointDialog.showModal());
+featureEl("#open-point-reopen").addEventListener("click", openPointReopen);
 featureEl("#close-point-reopen").addEventListener("click", () => pointDialog.close());
-pointDialog.addEventListener("close", stopPointCamera);
+pointDialog.addEventListener("close", () => {
+  pointCompanionRevision += 1;
+  pointMatchRevision += 1;
+  pointMatchController?.abort();
+  pointMatchController = null;
+  if (pointMatching) featureEl("#point-results").innerHTML = '<p class="feature-empty">Comparison stopped. Choose an image to try again.</p>';
+  pointMatching = false;
+  featureEl("#point-file-input").disabled = false;
+  featureEl("#point-choose").disabled = false;
+  featureEl("#point-results").setAttribute("aria-busy", "false");
+  stopPointCamera();
+});
+window.addEventListener("pagehide", stopPointCamera);
 featureEl("#point-start").addEventListener("click", startPointCamera);
+featureEl("#point-stop").addEventListener("click", () => {
+  stopPointCamera();
+  featureEl("#point-status").textContent = "Camera off. Start it again or choose a photo.";
+});
+featureEl("#point-companion-open").addEventListener("click", stopPointCamera);
+featureEl("#point-choose").addEventListener("click", () => featureEl("#point-file-input").click());
 featureEl("#point-capture").addEventListener("click", () => {
   const video = featureEl("#point-video");
   if (!video.videoWidth) return;

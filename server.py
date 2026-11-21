@@ -32,6 +32,9 @@ import requests
 from PIL import Image, ImageOps
 
 import hosting
+import glasses
+
+GLASSES_VOICE = glasses.GlassesVoice()
 import visual_features
 import free_3d
 import free_3d_relief
@@ -1046,6 +1049,14 @@ class Handler(BaseHTTPRequestHandler):
             if not path.startswith("/api/") and "text/html" in self.headers.get("Accept", ""):
                 return self.redirect("/login")
             return self.error("Owner access required", 401)
+        if path == "/api/glasses/status":
+            if not hosting.DEMO and not self.authorized():
+                return self.error("Owner access required", 401)
+            private = bool(hosting.hosted() and hosting.PASSPHRASE and not hosting.DEMO)
+            return self.json({"private_library": private,
+                              "voice_available": private and GLASSES_VOICE.configured,
+                              "transport": "iphone-meta-dat", "companion_scheme": "visualbrain",
+                              "frame_saved": False, "matching": "appearance"})
         if path == "/api/capabilities":
             return self.json(capabilities())
         if path == "/api/bootstrap":
@@ -1102,6 +1113,24 @@ class Handler(BaseHTTPRequestHandler):
             return self.json({"status": row["status"], "suggestions": json.loads(row["suggestions"]),
                               "labels": json.loads(row["labels"]), "provider": row["provider"],
                               "error": row["error"], "updated_at": row["updated_at"]})
+        if path.startswith("/api/assets/") and path.endswith("/thumbnail"):
+            asset_id = path.split("/")[-2]
+            with connection() as db:
+                row = db.execute("SELECT filename FROM assets WHERE id=? AND trashed_at IS NULL", (asset_id,)).fetchone()
+            if not row:
+                return self.error("Image not found", 404)
+            try:
+                with Image.open(ASSETS / row["filename"]) as image:
+                    if image.width * image.height > 40_000_000:
+                        return self.error("Image dimensions are too large", 400)
+                    image.draft("RGB", (384, 384))
+                    thumbnail = ImageOps.exif_transpose(image).convert("RGB")
+                    thumbnail.thumbnail((384, 384), Image.Resampling.LANCZOS)
+                    output = BytesIO()
+                    thumbnail.save(output, format="JPEG", quality=78)
+                return self.send_bytes(output.getvalue(), "image/jpeg")
+            except (OSError, ValueError):
+                return self.error("This preview could not be opened", 404)
         if path.startswith("/api/assets/"):
             asset_id = path.rsplit("/", 1)[-1]
             with connection() as db:
@@ -1248,6 +1277,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.error("Forbidden", 403)
         try:
             data = self.body()
+            if not isinstance(data, dict):
+                raise ValueError("Send a JSON object")
+            if path == "/api/glasses/voice":
+                try:
+                    private = bool(hosting.hosted() and hosting.PASSPHRASE and not hosting.DEMO)
+                    audio = GLASSES_VOICE.speak(data.get("text"), private_library=private)
+                except glasses.VoiceError as error:
+                    return self.error(str(error), error.status)
+                return self.send_bytes(audio, "audio/mpeg", extra={"Cache-Control": "no-store"})
             if path == "/api/capture":
                 return self.json(add_image(data), 201)
             if path == "/api/capture-url":
@@ -1289,9 +1327,16 @@ class Handler(BaseHTTPRequestHandler):
                 matches = visual_features.rank(query, active_image_records())
                 with connection() as db:
                     for match in matches:
-                        match["boards"] = [row["board_id"] for row in db.execute(
-                            "SELECT DISTINCT board_id FROM items WHERE asset_id=? ORDER BY board_id", (match["id"],))]
-                return self.json({"matches": matches, "method": "appearance", "frame_saved": False})
+                        asset = db.execute("SELECT title FROM assets WHERE id=?", (match["id"],)).fetchone()
+                        match["title"] = (asset["title"] if asset else "") or "Saved image"
+                        boards = [dict(row) for row in db.execute(
+                            "SELECT DISTINCT boards.id,boards.name FROM boards JOIN items ON items.board_id=boards.id "
+                            "WHERE items.asset_id=? AND items.kind='image' ORDER BY boards.name", (match["id"],))]
+                        match["boards"] = [board["id"] for board in boards]
+                        match["board_names"] = boards
+                state = glasses.annotate_matches(matches)
+                return self.json({"matches": matches, "method": "appearance", "frame_saved": False,
+                                  "match_state": state})
             if path == "/api/critique/invite":
                 if hosting.DEMO:
                     return self.error("Private links are unavailable in the public playground", 403)

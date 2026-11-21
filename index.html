@@ -8,7 +8,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css?v=11">
   <link rel="stylesheet" href="/glow.css?v=2">
-  <link rel="stylesheet" href="/features.css?v=1">
+  <link rel="stylesheet" href="/features.css?v=glasses-20261121">
 </head>
 <body>
   <div id="app">
@@ -111,7 +111,44 @@
   <dialog id="asset-dialog"><form id="asset-form"><h2>Saved image</h2><img id="asset-edit-preview" class="asset-edit-preview" alt=""><label class="field">Title<input id="asset-edit-title" maxlength="500"></label><label class="field">Collection<input id="asset-edit-collection" maxlength="100" list="collection-names"></label><datalist id="collection-names"></datalist><label class="field">Tags, separated by commas<input id="asset-edit-tags"></label><label class="field asset-favorite-field"><input id="asset-edit-favorite" type="checkbox"> Favorite</label><details id="asset-source-details" class="asset-source-details"><summary>Source trail</summary><p>Details saved from the page or entered by you. Check the original before reusing the image.</p><label class="field">Original page<input id="asset-source-url" type="url" maxlength="2048" placeholder="https://…"></label><label class="field">Page title<input id="asset-source-title" maxlength="500"></label><label class="field">Maker or author<input id="asset-source-author" maxlength="200"></label><label class="field">License or permission note<input id="asset-source-license" maxlength="200"></label><label class="field">License link<input id="asset-source-license-url" type="url" maxlength="2048" placeholder="https://…"></label><div class="asset-source-actions"><a id="asset-open-source" target="_blank" rel="noopener noreferrer" hidden>Open source page ↗</a><button id="asset-copy-citation" type="button">Copy source note</button></div></details><div class="dialog-actions asset-actions"><button id="asset-save-original" type="button">Save original as…</button><button id="asset-find-similar" type="button">Find similar images</button><button id="asset-move-trash" type="button" class="danger-action">Move to Trash</button></div><div class="dialog-actions"><button id="asset-cancel" type="button">Cancel</button><button type="submit">Save changes</button></div></form></dialog>
   <dialog id="trash-dialog"><div class="trash-dialog-content"><div class="trash-dialog-head"><div><h2>Trash</h2><p>Restore images with their saved board placements.</p></div><button id="close-trash" aria-label="Close Trash">×</button></div><input id="trash-search" type="search" placeholder="Find in Trash" aria-label="Find in Trash"><div id="trash-list" class="trash-list"></div><div class="dialog-actions trash-actions"><button id="restore-all" type="button">Restore all</button><button id="empty-trash" type="button" class="danger-action">Empty Trash…</button></div></div></dialog>
   <dialog id="taste-dialog" class="feature-dialog"><div class="feature-shell"><header class="feature-head"><div><h2>Taste map</h2><p>Explore the visual threads in your saved images.</p></div><button id="close-taste-map" type="button" aria-label="Close taste map">×</button></header><div id="taste-map-content" class="taste-map-content" aria-live="polite"></div></div></dialog>
-  <dialog id="point-dialog" class="feature-dialog"><div class="feature-shell"><header class="feature-head"><div><h2>Point &amp; reopen</h2><p>Find saved boards that look like what you see. The camera frame is compared here and is not saved.</p></div><button id="close-point-reopen" type="button" aria-label="Close camera search">×</button></header><div class="point-layout"><div class="point-camera"><video id="point-video" playsinline autoplay muted aria-label="Camera preview"></video><div class="point-controls"><button id="point-start" type="button">Start camera</button><button id="point-capture" type="button" disabled>Find matching boards</button><label class="point-file">Use a photo<input id="point-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden></label></div><p id="point-status" role="status" aria-live="polite"></p></div><div id="point-results" class="point-results"><p class="muted">Point at something you have saved, or choose a photo.</p></div></div></div></dialog>
+  <dialog id="point-dialog" class="feature-dialog" aria-labelledby="point-heading">
+    <div class="feature-shell">
+      <header class="feature-head">
+        <div><h2 id="point-heading">Point &amp; reopen</h2><p>Find saved references by appearance. Search images are processed without saving them.</p></div>
+        <button id="close-point-reopen" type="button" aria-label="Close camera search">×</button>
+      </header>
+      <div class="point-layout">
+        <div class="point-camera">
+          <section aria-labelledby="point-device-heading">
+            <h3 id="point-device-heading">Phone camera or webcam</h3>
+            <p class="point-help">Use this device’s browser camera or choose an image.</p>
+            <div class="point-preview">
+              <video id="point-video" playsinline autoplay muted hidden aria-label="This device’s camera preview"></video>
+              <p id="point-camera-off">Camera off</p>
+            </div>
+            <div class="point-controls">
+              <button id="point-start" type="button">Start camera</button>
+              <button id="point-stop" type="button" disabled>Stop camera</button>
+              <button id="point-capture" type="button" disabled>Find matching boards</button>
+              <button id="point-choose" type="button">Choose a photo</button>
+              <input id="point-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            </div>
+            <p id="point-status" role="status" aria-live="polite">Camera off. Start this device’s camera or choose a photo.</p>
+          </section>
+          <section class="point-companion" aria-labelledby="point-companion-heading">
+            <h3 id="point-companion-heading">Meta glasses</h3>
+            <p>Use your glasses to find saved references through Visual Brain’s iPhone companion.</p>
+            <p id="point-companion-status" role="status" aria-live="polite">Open this panel to check your private library connection.</p>
+            <div class="point-companion-links">
+              <a id="point-companion-open" hidden>Open iPhone companion</a>
+              <a href="https://github.com/rishvaiyer/visual-brain-app/blob/main/ios/README.md" target="_blank" rel="noopener noreferrer">iPhone setup + source</a>
+            </div>
+          </section>
+        </div>
+        <div id="point-results" class="point-results" aria-live="polite" aria-busy="false"><p class="feature-empty">Start with an image to see similar references and the boards that contain them.</p></div>
+      </div>
+    </div>
+  </dialog>
   <dialog id="model-dialog" class="feature-dialog"><div class="feature-shell"><header class="feature-head"><div><h2>3D object</h2><p id="model-dialog-source">Rotate the object or place it in your room on a supported phone.</p></div><button id="close-model-dialog" type="button" aria-label="Close 3D object">×</button></header><div class="model-detail"><model-viewer id="model-detail-viewer" loading="eager" camera-controls ar ar-modes="webxr quick-look" ar-scale="fixed" shadow-intensity="1" exposure="1" alt="Rotatable 3D object"></model-viewer><div class="model-detail-actions"><label class="field">Actual object height (cm)<input id="model-height" type="number" min="1" max="500" step="1" placeholder="Enter to place at scale"></label><label class="field">Place on<select id="model-placement"><option value="floor">Floor</option><option value="wall">Wall</option></select></label><button id="place-model" type="button" disabled>Place in my room</button><button id="snapshot-model" type="button">Save image</button><button id="save-model" type="button">Download 3D model</button><p id="model-ar-note">Enter the real height first. Placement needs a compatible phone; you can still rotate the model here.</p></div></div></div></dialog>
   <dialog id="walk-dialog" class="feature-dialog walk-dialog"><div class="feature-shell"><header class="feature-head"><div><h2 id="walk-title">Walk this board</h2><p>Move through what you saved. Use the buttons or arrow keys.</p></div><button id="close-walk" type="button" aria-label="Close walk-through">×</button></header><div id="walk-view" class="walk-view" tabindex="0" aria-label="Walk-through gallery"><div class="walk-room"><div class="walk-floor"></div><div id="walk-scene" class="walk-scene"></div></div><div id="walk-empty" class="walk-empty" hidden>Place images or 3D objects on this board to walk through it.</div></div><footer class="walk-controls"><button id="walk-back" type="button">← Back</button><span id="walk-count" aria-live="polite"></span><button id="walk-next" type="button">Next →</button></footer></div></dialog>
   <dialog id="critique-dialog" class="feature-dialog"><div class="feature-shell"><header class="feature-head"><div><h2 id="critique-title">Critique this board</h2><p>Pin a note to the exact place you mean.</p></div><button id="close-critique" type="button" aria-label="Close critique">×</button></header><div class="critique-layout"><div id="critique-objects" class="critique-objects"></div><aside class="critique-side"><div id="critique-new" class="critique-new"><p>Click an image or 3D object to place a note.</p><label class="field">Your name<input id="critique-author" maxlength="60" value="You"></label><label class="field">Note<textarea id="critique-body" maxlength="1000" rows="3" placeholder="What should change here?"></textarea></label><button id="critique-post" type="button" disabled>Add note</button></div><h3>Notes</h3><div id="critique-notes" class="critique-notes"></div><div class="critique-share"><h3>Private review link</h3><p>Anyone with the link can see and comment on this board. You can revoke it.</p><button id="critique-create-link" type="button">Create private link</button><div id="critique-link-row" hidden><input id="critique-link" readonly aria-label="Private review link"><button id="critique-copy-link" type="button">Copy</button></div><button id="critique-revoke-link" type="button" hidden>Revoke link</button><p id="critique-share-status" role="status"></p></div></aside></div></div></dialog>
@@ -119,6 +156,6 @@
   <script src="/app.js?v=16" defer></script>
   <script src="/save-as.js?v=7" defer></script>
   <script src="/glow.js?v=2" defer></script>
-  <script src="/features.js?v=1" defer></script>
+  <script src="/features.js?v=glasses-20261121" defer></script>
 </body>
 </html>

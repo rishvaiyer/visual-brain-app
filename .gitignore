@@ -10,3 +10,6 @@ __pycache__/
 .tools/
 .evidence/
 relief-model/
+
+# Keep private operational notes outside the public source tree.
+3D-AND-MOONSHOTS-2026-11-02.md

@@ -1,10 +1,20 @@
 <p align="center"><img src="brand/logo.svg" width="160" alt="Visual Brain"></p>
 <h1 align="center">Visual Brain</h1>
-<p align="center"><strong>No-fuss Pinterest, on your own computer.</strong><br>Save any image from the web with one click. Arrange it on infinite boards. Find it later. Nothing leaves your machine.</p>
+<p align="center"><strong>No-fuss Pinterest, on your own computer.</strong><br>Save any image from the web with one click. Arrange it on infinite boards. Find it later. Keep your images in a library you control.</p>
 
-<p align="center"><a href="https://visual-brain-production-9eb4.up.railway.app/brand/demo.mp4">▶ 35-second silent demo</a> · <a href="https://visual-brain-production-9eb4.up.railway.app">Live playground</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Download</a></p>
+<p align="center"><a href="https://visual-brain-production-9eb4.up.railway.app/brand/demo.mp4">▶ 35-second silent demo</a> · <a href="https://visual-brain-production-9eb4.up.railway.app">Live playground</a> · <a href="https://github.com/rishvaiyer/visual-brain-app/releases/latest">Desktop download</a></p>
 
-**Live demo:** https://visual-brain-production-9eb4.up.railway.app (shared public playground, wiped every few hours)
+**Live demo:** [Open the shared playground](https://visual-brain-production-9eb4.up.railway.app/) · [Meta glasses + iPhone companion](ios/README.md)
+
+## Meta glasses and iPhone
+
+The [iPhone companion](ios/README.md) connects phone-paired Meta glasses through Meta’s Device Access Toolkit, or uses the iPhone camera. Look around to find similar saved references, see their boards and reopen them. One shared camera pipeline feeds the private library’s appearance search.
+
+Connect a passphrase-protected HTTPS library. Matching frames are processed without saving them, and the companion stops capture when you stop, switch sources, disconnect or leave the app. Public playgrounds stay separate from this private camera flow. The web board’s **Point & reopen** panel includes the companion handoff and setup link.
+
+Optional natural voice reads concise results through the phone’s selected audio output, including Bluetooth glasses. Voice starts off and needs explicit consent. Configure `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` on the private library server; keep both out of app bundles and Git. Only spoken titles and board names go to the voice service. Frames remain between the phone and your library. Missing voice configuration shows an unavailable state, with visual results still usable.
+
+The native app and test bundle compile against pinned toolkit 1.1.0; API and session checks use generated images without real camera access. Physical glasses registration, streaming and Bluetooth playback remain to be verified on a connected device. See [companion setup and verification](ios/README.md).
 
 ## Run it in two commands
 
@@ -13,7 +23,7 @@ python3 -m pip install -r requirements.txt
 python3 server.py
 ```
 
-Open http://127.0.0.1:8777. On a Mac you can double-click `Open Visual Brain.command` instead; it starts the server and opens the browser for you.
+Open [your local board](http://127.0.0.1:8777). On a Mac you can double-click `Open Visual Brain.command` instead; it starts the server and opens the browser for you.
 
 Needs Python 3.10 or newer. No database server, no accounts, no cloud.
 
@@ -133,3 +143,18 @@ Plain Python standard library HTTP server, SQLite, vanilla JavaScript. Two depen
 ## License
 
 MIT. Bundled fonts keep their own open licenses in `fonts/licenses/`; `vendor/mlx_clip` is MIT from Apple; the bundled model viewer is Apache-2.0 with its license in `vendor/model_viewer/`.
+
+
+## Companion checks
+
+Run the unit and HTTP checks independently because the hosted test fixtures configure process-wide library settings:
+
+```sh
+python3 -m unittest discover -s tests -p test_glasses.py
+node tests/test_glasses_ui.cjs
+PYTHONPATH=. python3 checks/glasses_integration.py
+python3 -m unittest discover -s tests -p test_hosted_security.py
+python3 -m unittest discover -s tests -p test_visual_features.py
+```
+
+The HTTP check uses a temporary private library and generated images. Voice calls are mocked or refused without configuration; these checks do not contact a paid provider. Native build and source checks are documented in [the iPhone companion](ios/README.md).

@@ -1,0 +1,50 @@
+name: VisualBrain
+options:
+  bundleIdPrefix: com.rishvaiyer
+  deploymentTarget:
+    iOS: '17.2'
+packages:
+  MetaWearablesDAT:
+    url: https://github.com/meta/meta-wearables-dat-ios
+    exactVersion: 1.1.0
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    DEVELOPMENT_TEAM: ''
+    MARKETING_VERSION: '1.0.0'
+    CURRENT_PROJECT_VERSION: 1
+    META_APP_ID: '0'
+    CLIENT_TOKEN: ''
+targets:
+  VisualBrain:
+    type: application
+    platform: iOS
+    sources: [VisualBrain]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rishvaiyer.visualbrain
+        INFOPLIST_FILE: VisualBrain/Info.plist
+        CODE_SIGN_ENTITLEMENTS: VisualBrain/VisualBrain.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: '1,2'
+    dependencies:
+      - package: MetaWearablesDAT
+        product: MWDATCore
+      - package: MetaWearablesDAT
+        product: MWDATCamera
+  VisualBrainTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [VisualBrainTests]
+    dependencies:
+      - target: VisualBrain
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  VisualBrain:
+    build:
+      targets:
+        VisualBrain: all
+    test:
+      targets: [VisualBrainTests]
