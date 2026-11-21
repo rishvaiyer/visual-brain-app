@@ -59,6 +59,34 @@ To check the complete private dispatch and return path before connecting a hoste
 
 The normal hosted container includes the viewer, GLB import and the built-in engine above, but does not install the large CPU worker. For the free Ryzen worker, run `free_3d_worker.py` on Ryzen with `VISUAL_BRAIN_WORKER_TOKEN_FILE` pointing to a protected credential and `VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN` set to the hosted site. Set `VISUAL_BRAIN_3D_OUTBOUND=1` and the matching `VISUAL_BRAIN_3D_REMOTE_TOKEN` as private hosted-service variables. Run `free_3d_outbound.py` on Ryzen with the same credential, callback origin, and loopback worker port. It opens one authenticated WebSocket to the hosted site and forwards source photos to the loopback worker; the worker sends completed models through the protected callback. No inbound route or paid worker is needed. Keep token values out of source and logs. Room placement needs a compatible phone and a secure site address.
 
+#### Linux user-service configuration
+
+The outbound connector template is in `deploy/visual-brain-3d-outbound.service`.
+It expects the checkout at `~/apps/visual-brain-worker`, an application Python
+environment at `.venv/` with `requirements.txt` and `websocket-client` installed,
+and a running `visual-brain-3d.service` loopback worker. Adjust the checkout paths
+in the unit if you install elsewhere. `%h` expands to the user service owner's
+home directory.
+
+Create a private `~/.config/visual-brain/worker.env` containing the board's HTTPS
+origin and any worker-directory override. For example:
+
+```dotenv
+VISUAL_BRAIN_WORKER_CALLBACK_ORIGIN=https://your-board.example
+# Optional when the worker was installed outside the checkout:
+# VISUAL_BRAIN_3D_WORKER_DIR=/absolute/path/to/.local-3d-worker
+# Keep this equal to the loopback worker's configured port:
+VISUAL_BRAIN_WORKER_PORT=18788
+```
+
+Use literal absolute paths in this file. Environment files do not expand shell
+variables or `~`. Protect it with owner-only read/write permissions. The unit
+loads its separate token from `~/.config/visual-brain/worker-token` through
+systemd's `LoadCredential`; the Python connector reads `CREDENTIALS_DIRECTORY`
+automatically. Keep that token file owner-only as well, and configure the same
+token and port on the loopback worker. The unit requires `worker.env`, so a
+missing board configuration stops startup with a systemd error.
+
 ## Browser extension
 
 The `extension` folder is an unpacked Chrome/Edge extension.
